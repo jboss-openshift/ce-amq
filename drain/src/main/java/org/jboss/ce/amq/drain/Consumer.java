@@ -40,20 +40,48 @@ public class Consumer extends Client {
         super(url, username, password);
     }
 
-    public Iterator<Message> consumeQueue(String queue) throws JMSException {
-        return consumeMessages(getSession().createQueue(queue));
+    public Iterator<Message> consumeQueue(String queueName) throws JMSException {
+        final Queue queue = getSession().createQueue(queueName);
+        DestinationInfo info = new DestinationInfo() {
+            public String getType() {
+                return "Queue";
+            }
+
+            public String getName() throws JMSException {
+                return queue.getQueueName();
+            }
+
+            public String getAttribute() {
+                return "QueueSize";
+            }
+        };
+        return consumeMessages(queue, info);
     }
 
-    public Iterator<Message> consumeTopic(String topic) throws JMSException {
-        return consumeMessages(getSession().createTopic(topic));
+    public Iterator<Message> consumeTopic(String topicName) throws JMSException {
+        final Topic topic = getSession().createTopic(topicName);
+        DestinationInfo info = new DestinationInfo() {
+            public String getType() {
+                return "Topic";
+            }
+
+            public String getName() throws JMSException {
+                return topic.getTopicName();
+            }
+
+            public String getAttribute() {
+                return "InFlightCount"; // TODO -- which attribute??
+            }
+        };
+        return consumeMessages(topic, info);
     }
 
-    private Iterator<Message> consumeMessages(final Destination destination) throws JMSException {
+    private Iterator<Message> consumeMessages(Destination destination, final DestinationInfo info) throws JMSException {
         final MessageConsumer consumer = getSession().createConsumer(destination);
         return new Iterator<Message>() {
             public boolean hasNext() {
                 try {
-                    return getJMX().hasNextMessage(getDestinationInfo(destination));
+                    return getJMX().hasNextMessage(info);
                 } catch (Exception e) {
                     throw new IllegalStateException(e);
                 }
@@ -70,41 +98,5 @@ public class Consumer extends Client {
             public void remove() {
             }
         };
-    }
-
-    private DestinationInfo getDestinationInfo(final Destination destination) throws JMSException {
-        if (destination instanceof Queue) {
-            final Queue queue = (Queue) destination;
-            return new DestinationInfo() {
-                public String getType() {
-                    return "Queue";
-                }
-
-                public String getName() throws JMSException {
-                    return queue.getQueueName();
-                }
-
-                public String getAttribute() {
-                    return "QueueSize";
-                }
-            };
-        } else if (destination instanceof Topic) {
-            final Topic topic = (Topic) destination;
-            return new DestinationInfo() {
-                public String getType() {
-                    return "Topic";
-                }
-
-                public String getName() throws JMSException {
-                    return topic.getTopicName();
-                }
-
-                public String getAttribute() {
-                    return "InFlightCount"; // TODO -- which attribute??
-                }
-            };
-        } else {
-            throw new IllegalArgumentException("Unknown destination type: " + destination);
-        }
     }
 }
