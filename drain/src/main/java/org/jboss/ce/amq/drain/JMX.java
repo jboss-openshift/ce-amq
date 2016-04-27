@@ -37,7 +37,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.StringTokenizer;
-import java.util.logging.Logger;
 
 import javax.management.AttributeList;
 import javax.management.MBeanServerConnection;
@@ -49,12 +48,15 @@ import javax.management.remote.JMXConnector;
 import javax.management.remote.JMXConnectorFactory;
 import javax.management.remote.JMXServiceURL;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 /**
  * @author ActiveMQ codebase
  * @author <a href="mailto:ales.justin@jboss.org">Ales Justin</a>
  */
 class JMX {
-    private static final Logger log = Logger.getLogger(JMX.class.getName());
+    private static final Logger log = LoggerFactory.getLogger(JMX.class);
     private static final String queryString = "type=Broker,brokerName=%s,destinationType=%s,destinationName=%s";
 
     private static String BROKER_NAME;

@@ -25,16 +25,17 @@ package org.jboss.ce.amq.drain;
 
 import java.util.Collection;
 import java.util.Iterator;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 import javax.jms.Message;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * @author <a href="mailto:ales.justin@jboss.org">Ales Justin</a>
  */
 public class Main {
-    private static final Logger log = Logger.getLogger(Main.class.getName());
+    private static final Logger log = LoggerFactory.getLogger(Main.class);
 
     private String consumerURL = Utils.getSystemPropertyOrEnvVar("consumer.url");
     private String consumerUsername = Utils.getSystemPropertyOrEnvVar("consumer.username");
@@ -49,7 +50,7 @@ public class Main {
             Main main = new Main();
             main.run();
         } catch (Exception e) {
-            Logger.getLogger(Main.class.getName()).log(Level.SEVERE, "Error draining broker: " + e.getMessage(), e);
+            log.error("Error draining broker: " + e.getMessage(), e);
             System.exit(1);
         }
     }
@@ -78,6 +79,7 @@ public class Main {
                 }
 
                 // drain topics
+                /*
                 Collection<String> topics = consumer.getJMX().topics();
                 log.info(String.format("Found topics: %s", topics));
                 for (String topic : topics) {
@@ -91,6 +93,7 @@ public class Main {
                     }
                     log.info(String.format("Handled %s messages for topic '%s'.", counter, topic));
                 }
+                */
             }
         }
     }
