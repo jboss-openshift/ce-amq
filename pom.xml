@@ -48,6 +48,7 @@
 
     <properties>
         <version.org.apache.activemq>5.11.0</version.org.apache.activemq>
+        <version.junit>4.11</version.junit>
     </properties>
 
     <modules>
@@ -63,12 +64,12 @@
                 <version>${version.org.apache.activemq}</version>
             </dependency>
 
-            <!-- dependency>
+            <dependency>
                 <groupId>junit</groupId>
                 <artifactId>junit</artifactId>
                 <version>${version.junit}</version>
                 <scope>test</scope>
-            </dependency -->
+            </dependency>
 
         </dependencies>
     </dependencyManagement>

@@ -67,11 +67,11 @@ public class Main {
                 log.info(String.format("Found queues: %s", queues));
                 for (String queue : queues) {
                     counter = 0;
-                    Producer.ProducerHandle handle = producer.produceQueueMessages(queue);
+                    Producer.ProducerProcessor handle = producer.processQueueMessages(queue);
                     Iterator<Message> iter = consumer.consumeQueue(queue);
                     while (iter.hasNext()) {
                         Message next = iter.next();
-                        handle.produceMessage(next);
+                        handle.processMessage(next);
                         counter++;
                     }
                     log.info(String.format("Handled %s messages for queue '%s'.", counter, queue));
@@ -82,11 +82,11 @@ public class Main {
                 log.info(String.format("Found topics: %s", topics));
                 for (String topic : topics) {
                     counter = 0;
-                    Producer.ProducerHandle handle = producer.produceTopicMessages(topic);
+                    Producer.ProducerProcessor handle = producer.processTopicMessages(topic);
                     Iterator<Message> iter = consumer.consumeTopic(topic);
                     while (iter.hasNext()) {
                         Message next = iter.next();
-                        handle.produceMessage(next);
+                        handle.processMessage(next);
                         counter++;
                     }
                     log.info(String.format("Handled %s messages for topic '%s'.", counter, topic));

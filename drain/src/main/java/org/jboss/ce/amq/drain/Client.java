@@ -25,11 +25,18 @@ package org.jboss.ce.amq.drain;
 
 import java.io.Closeable;
 import java.io.IOException;
+import java.io.Serializable;
 
+import javax.jms.BytesMessage;
 import javax.jms.Connection;
 import javax.jms.ConnectionFactory;
 import javax.jms.JMSException;
+import javax.jms.MapMessage;
+import javax.jms.Message;
+import javax.jms.ObjectMessage;
 import javax.jms.Session;
+import javax.jms.StreamMessage;
+import javax.jms.TextMessage;
 
 import org.apache.activemq.ActiveMQConnectionFactory;
 
@@ -41,8 +48,8 @@ public abstract class Client implements Closeable {
     private String username;
     private String password;
 
-    protected Connection connection;
-    protected Session session;
+    private Connection connection;
+    private Session session;
 
     private JMX jmx;
 
@@ -50,6 +57,13 @@ public abstract class Client implements Closeable {
         this.url = url;
         this.username = username;
         this.password = password;
+    }
+
+    protected Session getSession() {
+        if (session == null) {
+            throw new IllegalStateException("No start invoked?");
+        }
+        return session;
     }
 
     protected ConnectionFactory getConnectionFactory() {
@@ -77,6 +91,9 @@ public abstract class Client implements Closeable {
     }
 
     public void stop() throws JMSException {
+        if (connection == null) {
+            throw new IllegalStateException("No start invoked?");
+        }
         connection.stop();
     }
 
@@ -85,5 +102,37 @@ public abstract class Client implements Closeable {
             jmx = new JMX();
         }
         return jmx;
+    }
+
+    public Message createMessage() throws JMSException {
+        return getSession().createMessage();
+    }
+
+    public TextMessage createTextMessage() throws JMSException {
+        return getSession().createTextMessage();
+    }
+
+    public TextMessage createTextMessage(String text) throws JMSException {
+        return getSession().createTextMessage(text);
+    }
+
+    public BytesMessage createBytesMessage() throws JMSException {
+        return getSession().createBytesMessage();
+    }
+
+    public ObjectMessage createObjectMessage() throws JMSException {
+        return getSession().createObjectMessage();
+    }
+
+    public ObjectMessage createObjectMessage(Serializable serializable) throws JMSException {
+        return getSession().createObjectMessage(serializable);
+    }
+
+    public StreamMessage createStreamMessage() throws JMSException {
+        return getSession().createStreamMessage();
+    }
+
+    public MapMessage createMapMessage() throws JMSException {
+        return getSession().createMapMessage();
     }
 }

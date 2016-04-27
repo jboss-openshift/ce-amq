@@ -53,9 +53,9 @@ import javax.management.remote.JMXServiceURL;
  * @author ActiveMQ codebase
  * @author <a href="mailto:ales.justin@jboss.org">Ales Justin</a>
  */
-public class JMX {
+class JMX {
     private static final Logger log = Logger.getLogger(JMX.class.getName());
-    private static final String queryString = "type=Broker,brokerName=*,destinationType=%s,destinationName=*,*";
+    private static final String queryString = "type=Broker,brokerName=*,destinationType=%s,destinationName=%s";
 
     private static String DEFAULT_JMX_URL;
     private static String jmxUser;
@@ -73,18 +73,31 @@ public class JMX {
         jmxPassword = Utils.getSystemPropertyOrEnvVar("activemq.jmx.password");
     }
 
-    public Collection<String> queues() throws Exception {
+    Collection<String> queues() throws Exception {
         return destinations("Queue");
     }
 
-    public Collection<String> topics() throws Exception {
+    Collection<String> topics() throws Exception {
         return destinations("Topic");
     }
 
-    // impl details
+    boolean hasNextMessage(DestinationInfo info) throws Exception {
+        String query = String.format(queryString, info.getType(), info.getName());
+        List<ObjectInstance> mbeans = queryMBeans(createJmxConnection(), query);
+        for (ObjectInstance mbean : mbeans) {
+            ObjectName objectName = mbean.getObjectName();
+            AttributeList attributes = createJmxConnection().getAttributes(objectName, new String[]{info.getAttribute()});
+            if (attributes.size() > 0) {
+                Object value = attributes.asList().get(0).getValue();
+                Number number = Number.class.cast(value);
+                return (number.longValue() > 0);
+            }
+        }
+        return false;
+    }
 
     private Collection<String> destinations(String type) throws Exception {
-        String query = String.format(queryString, type);
+        String query = String.format(queryString, type, "*,*");
         List<ObjectInstance> mbeans = queryMBeans(createJmxConnection(), query);
         List<String> destinations = new ArrayList<>();
         for (ObjectInstance mbean : mbeans) {
@@ -99,6 +112,8 @@ public class JMX {
         return destinations;
     }
 
+    // ActiveMQ impl details
+
     private static List<ObjectInstance> queryMBeans(MBeanServerConnection jmxConnection, String queryString) throws Exception {
         return new MBeansObjectNameQueryFilter(jmxConnection).query(queryString);
     }
@@ -107,15 +122,15 @@ public class JMX {
         log.info(msg);
     }
 
-    protected JMXServiceURL getJmxServiceUrl() {
+    private JMXServiceURL getJmxServiceUrl() {
         return jmxServiceUrl;
     }
 
-    protected void setJmxServiceUrl(JMXServiceURL jmxServiceUrl) {
+    private void setJmxServiceUrl(JMXServiceURL jmxServiceUrl) {
         this.jmxServiceUrl = jmxServiceUrl;
     }
 
-    protected void setJmxServiceUrl(String jmxServiceUrl) throws MalformedURLException {
+    private void setJmxServiceUrl(String jmxServiceUrl) throws MalformedURLException {
         setJmxServiceUrl(new JMXServiceURL(jmxServiceUrl));
     }
 
@@ -128,7 +143,7 @@ public class JMX {
         return getJVM().equals("Sun Microsystems Inc.") || getJVM().startsWith("Oracle");
     }
 
-    protected MBeanServerConnection createJmxConnection() throws IOException {
+    private MBeanServerConnection createJmxConnection() throws IOException {
         if (jmxConnection == null) {
             jmxConnection = createJmxConnector().getMBeanServerConnection();
         }
@@ -154,7 +169,7 @@ public class JMX {
     }
 
     @SuppressWarnings("unchecked")
-    protected JMXServiceURL useJmxServiceUrl() throws MalformedURLException {
+    private JMXServiceURL useJmxServiceUrl() throws MalformedURLException {
         if (getJmxServiceUrl() == null) {
             String jmxUrl = DEFAULT_JMX_URL;
             int connectingPid = -1;
@@ -263,13 +278,13 @@ public class JMX {
             return queryMBeans(new ObjectName(DEFAULT_JMX_DOMAIN + ":" + objNameQuery), queryExp);
         }
 
-        protected List<ObjectInstance> queryMBeans(ObjectName objName, String queryExpStr) throws IOException {
+        private List<ObjectInstance> queryMBeans(ObjectName objName, String queryExpStr) throws IOException {
             QueryExp queryExp = createQueryExp(queryExpStr);
             // Convert mbeans set to list to make it standard throughout the query filter
             return new ArrayList<>(jmxConnection.queryMBeans(objName, queryExp));
         }
 
-        protected QueryExp createQueryExp(@SuppressWarnings("UnusedParameters") String queryExpStr) {
+        private QueryExp createQueryExp(@SuppressWarnings("UnusedParameters") String queryExpStr) {
             // Currently unsupported
             return null;
         }

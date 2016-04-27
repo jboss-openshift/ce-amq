@@ -29,6 +29,8 @@ import javax.jms.Destination;
 import javax.jms.JMSException;
 import javax.jms.Message;
 import javax.jms.MessageConsumer;
+import javax.jms.Queue;
+import javax.jms.Topic;
 
 /**
  * @author <a href="mailto:ales.justin@jboss.org">Ales Justin</a>
@@ -39,33 +41,70 @@ public class Consumer extends Client {
     }
 
     public Iterator<Message> consumeQueue(String queue) throws JMSException {
-        return consumeMessages(session.createQueue(queue));
+        return consumeMessages(getSession().createQueue(queue));
     }
 
     public Iterator<Message> consumeTopic(String topic) throws JMSException {
-        return consumeMessages(session.createTopic(topic));
+        return consumeMessages(getSession().createTopic(topic));
     }
 
-    private Iterator<Message> consumeMessages(Destination destination) throws JMSException {
-        final MessageConsumer consumer = session.createConsumer(destination);
+    private Iterator<Message> consumeMessages(final Destination destination) throws JMSException {
+        final MessageConsumer consumer = getSession().createConsumer(destination);
         return new Iterator<Message>() {
-            private Message message;
-
             public boolean hasNext() {
                 try {
-                    message = consumer.receiveNoWait();
-                    return (message != null);
-                } catch (JMSException e) {
+                    return getJMX().hasNextMessage(getDestinationInfo(destination));
+                } catch (Exception e) {
                     throw new IllegalStateException(e);
                 }
             }
 
             public Message next() {
-                return message;
+                try {
+                    return consumer.receive();
+                } catch (JMSException e) {
+                    throw new IllegalStateException(e);
+                }
             }
 
             public void remove() {
             }
         };
+    }
+
+    private DestinationInfo getDestinationInfo(final Destination destination) throws JMSException {
+        if (destination instanceof Queue) {
+            final Queue queue = (Queue) destination;
+            return new DestinationInfo() {
+                public String getType() {
+                    return "Queue";
+                }
+
+                public String getName() throws JMSException {
+                    return queue.getQueueName();
+                }
+
+                public String getAttribute() {
+                    return "QueueSize";
+                }
+            };
+        } else if (destination instanceof Topic) {
+            final Topic topic = (Topic) destination;
+            return new DestinationInfo() {
+                public String getType() {
+                    return "Topic";
+                }
+
+                public String getName() throws JMSException {
+                    return topic.getTopicName();
+                }
+
+                public String getAttribute() {
+                    return "InFlightCount"; // TODO -- which attribute??
+                }
+            };
+        } else {
+            throw new IllegalArgumentException("Unknown destination type: " + destination);
+        }
     }
 }
