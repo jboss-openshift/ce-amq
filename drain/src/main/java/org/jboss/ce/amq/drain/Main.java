@@ -23,6 +23,7 @@
 
 package org.jboss.ce.amq.drain;
 
+import java.util.Collection;
 import java.util.Iterator;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -33,6 +34,8 @@ import javax.jms.Message;
  * @author <a href="mailto:ales.justin@jboss.org">Ales Justin</a>
  */
 public class Main {
+    private static final Logger log = Logger.getLogger(Main.class.getName());
+
     private String consumerURL = Utils.getSystemPropertyOrEnvVar("consumer.url");
     private String consumerUsername = Utils.getSystemPropertyOrEnvVar("consumer.username");
     private String consumerPassword = Utils.getSystemPropertyOrEnvVar("consumer.password");
@@ -56,23 +59,37 @@ public class Main {
             consumer.start();
             try (Producer producer = new Producer(producerURL, producerUsername, producerPassword)) {
                 producer.start();
+
+                int counter;
+
                 // drain queues
-                for (String queue : consumer.getJMX().queues()) {
+                Collection<String> queues = consumer.getJMX().queues();
+                log.info(String.format("Found queues: %s", queues));
+                for (String queue : queues) {
+                    counter = 0;
                     Producer.ProducerHandle handle = producer.produceQueueMessages(queue);
                     Iterator<Message> iter = consumer.consumeQueue(queue);
                     while (iter.hasNext()) {
                         Message next = iter.next();
                         handle.produceMessage(next);
+                        counter++;
                     }
+                    log.info(String.format("Handled %s messages for queue '%s'.", counter, queue));
                 }
+
                 // drain topics
-                for (String topic : consumer.getJMX().topics()) {
+                Collection<String> topics = consumer.getJMX().topics();
+                log.info(String.format("Found topics: %s", topics));
+                for (String topic : topics) {
+                    counter = 0;
                     Producer.ProducerHandle handle = producer.produceTopicMessages(topic);
                     Iterator<Message> iter = consumer.consumeTopic(topic);
                     while (iter.hasNext()) {
                         Message next = iter.next();
                         handle.produceMessage(next);
+                        counter++;
                     }
+                    log.info(String.format("Handled %s messages for topic '%s'.", counter, topic));
                 }
             }
         }

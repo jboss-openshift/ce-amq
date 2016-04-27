@@ -30,6 +30,7 @@ import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLClassLoader;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -38,6 +39,7 @@ import java.util.Properties;
 import java.util.StringTokenizer;
 import java.util.logging.Logger;
 
+import javax.management.AttributeList;
 import javax.management.MBeanServerConnection;
 import javax.management.MalformedObjectNameException;
 import javax.management.ObjectInstance;
@@ -71,23 +73,28 @@ public class JMX {
         jmxPassword = Utils.getSystemPropertyOrEnvVar("activemq.jmx.password");
     }
 
-    public Iterable<String> queues() throws Exception {
+    public Collection<String> queues() throws Exception {
         return destinations("Queue");
     }
 
-    public Iterable<String> topics() throws Exception {
+    public Collection<String> topics() throws Exception {
         return destinations("Topic");
     }
 
     // impl details
 
-    private Iterable<String> destinations(String type) throws Exception {
+    private Collection<String> destinations(String type) throws Exception {
         String query = String.format(queryString, type);
         List<ObjectInstance> mbeans = queryMBeans(createJmxConnection(), query);
         List<String> destinations = new ArrayList<>();
         for (ObjectInstance mbean : mbeans) {
-            Object destinationName = createJmxConnection().getAttribute(mbean.getObjectName(), "Name");
-            destinations.add(destinationName.toString());
+            ObjectName objectName = mbean.getObjectName();
+            AttributeList attributes = createJmxConnection().getAttributes(objectName, new String[]{"Name"});
+            // not all mbeans are exactly queues and topics -- don't have Name (they have DestinationName, still OK?)
+            if (attributes.size() > 0) {
+                String name = attributes.asList().get(0).getValue().toString();
+                destinations.add(name);
+            }
         }
         return destinations;
     }
