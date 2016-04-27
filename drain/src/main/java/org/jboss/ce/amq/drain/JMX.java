@@ -55,8 +55,9 @@ import javax.management.remote.JMXServiceURL;
  */
 class JMX {
     private static final Logger log = Logger.getLogger(JMX.class.getName());
-    private static final String queryString = "type=Broker,brokerName=*,destinationType=%s,destinationName=%s";
+    private static final String queryString = "type=Broker,brokerName=%s,destinationType=%s,destinationName=%s";
 
+    private static String BROKER_NAME;
     private static String DEFAULT_JMX_URL;
     private static String jmxUser;
     private static String jmxPassword;
@@ -68,7 +69,8 @@ class JMX {
     private MBeanServerConnection jmxConnection;
 
     static {
-        DEFAULT_JMX_URL = System.getProperty("activemq.jmx.url", "service:jmx:rmi:///jndi/rmi://localhost:1099/jmxrmi");
+        BROKER_NAME = Utils.getSystemPropertyOrEnvVar("broker.name", "localhost");
+        DEFAULT_JMX_URL = Utils.getSystemPropertyOrEnvVar("activemq.jmx.url", "service:jmx:rmi:///jndi/rmi://localhost:1099/jmxrmi");
         jmxUser = Utils.getSystemPropertyOrEnvVar("activemq.jmx.user");
         jmxPassword = Utils.getSystemPropertyOrEnvVar("activemq.jmx.password");
     }
@@ -82,7 +84,7 @@ class JMX {
     }
 
     boolean hasNextMessage(DestinationInfo info) throws Exception {
-        String query = String.format(queryString, info.getType(), info.getName());
+        String query = query(info.getType(), info.getName());
         List<ObjectInstance> mbeans = queryMBeans(createJmxConnection(), query);
         for (ObjectInstance mbean : mbeans) {
             ObjectName objectName = mbean.getObjectName();
@@ -96,8 +98,12 @@ class JMX {
         return false;
     }
 
+    private String query(String type, String name) {
+        return String.format(queryString, BROKER_NAME, type, name);
+    }
+
     private Collection<String> destinations(String type) throws Exception {
-        String query = String.format(queryString, type, "*,*");
+        String query = query(type, "*,*");
         List<ObjectInstance> mbeans = queryMBeans(createJmxConnection(), query);
         List<String> destinations = new ArrayList<>();
         for (ObjectInstance mbean : mbeans) {

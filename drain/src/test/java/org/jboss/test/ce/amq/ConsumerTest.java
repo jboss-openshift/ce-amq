@@ -36,7 +36,7 @@ import org.junit.Test;
  */
 public class ConsumerTest {
 
-    private static final String URL = Utils.getSystemPropertyOrEnvVar("consumer.test.url", "tcp://localhost:61616");
+    private static final String URL = Utils.getSystemPropertyOrEnvVar("consumer.test.url", "tcp://localhost:61626");
 
     private static final String QUEUE = Utils.getSystemPropertyOrEnvVar("consumer.test.queue", "QUEUES.FOO");
     private static final String TOPIC = Utils.getSystemPropertyOrEnvVar("consumer.test.topic", "TOPICS.FOO");
