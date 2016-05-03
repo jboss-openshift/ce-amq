@@ -58,6 +58,7 @@ import org.slf4j.LoggerFactory;
 class JMX {
     private static final Logger log = LoggerFactory.getLogger(JMX.class);
     private static final String brokerQueryString = "type=Broker,brokerName=%s";
+    private static final String connectionQueryString = "type=Broker,brokerName=%s,connectionViewType=clientId,connectionName=%s";
 
     private static String BROKER_NAME;
     private static String DEFAULT_JMX_URL;
@@ -85,6 +86,14 @@ class JMX {
         return destinations("InactiveDurableTopicSubscribers");
     }
 
+    void disconnect(String clientId) throws Exception {
+        String query = connectionQuery(clientId);
+        List<ObjectInstance> mbeans = queryMBeans(createJmxConnection(), query);
+        for (ObjectInstance mbean : mbeans) {
+            createJmxConnection().invoke(mbean.getObjectName(), "stop", new Object[0], new String[0]);
+        }
+    }
+
     boolean hasNextMessage(ObjectName objectName, String attributeName) throws Exception {
         AttributeList attributes = createJmxConnection().getAttributes(objectName, new String[]{attributeName});
         if (attributes.size() > 0) {
@@ -97,6 +106,10 @@ class JMX {
 
     private String brokerQuery() {
         return String.format(brokerQueryString, BROKER_NAME);
+    }
+
+    private String connectionQuery(String clientId) {
+        return String.format(connectionQueryString, BROKER_NAME, clientId);
     }
 
     private Collection<DestinationHandle> destinations(String type) throws Exception {
@@ -205,6 +218,7 @@ class JMX {
                     Method getVMList = virtualMachine.getMethod("list", (Class[]) null);
                     Method attachToVM = virtualMachine.getMethod("attach", String.class);
                     Method getAgentProperties = virtualMachine.getMethod("getAgentProperties", (Class[]) null);
+                    Method loadAgent = virtualMachine.getMethod("loadAgent", String.class);
                     Method getVMDescriptor = virtualMachineDescriptor.getMethod("displayName", (Class[]) null);
                     Method getVMId = virtualMachineDescriptor.getMethod("id", (Class[]) null);
 
@@ -219,13 +233,22 @@ class JMX {
 
                             Properties agentProperties = (Properties) getAgentProperties.invoke(vm, (Object[]) null);
                             String connectorAddress = agentProperties.getProperty(CONNECTOR_ADDRESS);
+                            if (connectorAddress == null) {
+                                String agent = javaHome + File.separator + "lib" + File.separator + "management-agent.jar";
+                                loadAgent.invoke(vm, agent);
+                                // re-check
+                                agentProperties = (Properties) getAgentProperties.invoke(vm, (Object[]) null);
+                                connectorAddress = agentProperties.getProperty(CONNECTOR_ADDRESS);
+                            }
 
                             if (connectorAddress != null) {
                                 jmxUrl = connectorAddress;
                                 connectingPid = Integer.parseInt(id);
                                 print("useJmxServiceUrl Found JMS Url: " + jmxUrl);
-                                break;
+                            } else {
+                                print(String.format("No %s property!?", CONNECTOR_ADDRESS));
                             }
+                            break;
                         }
                     }
                 } catch (Exception ignore) {

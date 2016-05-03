@@ -40,34 +40,20 @@ import sun.security.krb5.internal.crypto.Des;
  * @author <a href="mailto:ales.justin@jboss.org">Ales Justin</a>
  */
 public class Consumer extends Client {
-    private final String clientId;
-
-    public Consumer(String url, String username, String password, String clientId) {
-        super(url, username, password);
-        this.clientId = clientId;
+    public Consumer(String url, String username, String password) {
+        this(url, username, password, null);
     }
 
-    @Override
-    protected void init(Connection connection) throws JMSException {
-        super.init(connection);
-        connection.setClientID(clientId);
+    public Consumer(String url, String username, String password, String clientId) {
+        super(url, username, password, clientId);
     }
 
     private Queue createQueue(String queueName) throws JMSException {
         return getSession().createQueue(queueName);
     }
 
-    private TopicSubscriber getTopicSubscriber(String topicName, String subscriptionName) throws JMSException {
-        final Topic topic = getSession().createTopic(topicName);
-        return getSession().createDurableSubscriber(topic, subscriptionName);
-    }
-
     public MessageConsumer queueConsumer(String queueName) throws JMSException {
         return getSession().createConsumer(createQueue(queueName));
-    }
-
-    public TopicSubscriber topicSubscriber(String topicName, String subscriptionName) throws JMSException {
-        return getTopicSubscriber(topicName, subscriptionName);
     }
 
     public Iterator<Message> consumeQueue(DestinationHandle handle, String queueName) throws JMSException {

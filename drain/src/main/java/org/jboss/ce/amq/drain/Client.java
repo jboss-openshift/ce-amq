@@ -37,6 +37,8 @@ import javax.jms.ObjectMessage;
 import javax.jms.Session;
 import javax.jms.StreamMessage;
 import javax.jms.TextMessage;
+import javax.jms.Topic;
+import javax.jms.TopicSubscriber;
 
 import org.apache.activemq.ActiveMQConnectionFactory;
 
@@ -48,15 +50,22 @@ public abstract class Client implements Closeable {
     private String username;
     private String password;
 
+    private String clientId;
+
     private Connection connection;
     private Session session;
 
     private JMX jmx;
 
     public Client(String url, String username, String password) {
+        this(url, username, password, null);
+    }
+
+    public Client(String url, String username, String password, String clientId) {
         this.url = url;
         this.username = username;
         this.password = password;
+        this.clientId = clientId;
     }
 
     protected Session getSession() {
@@ -71,6 +80,9 @@ public abstract class Client implements Closeable {
     }
 
     protected void init(Connection connection) throws JMSException {
+        if (clientId != null) {
+            connection.setClientID(clientId);
+        }
     }
 
     public void close() throws IOException {
@@ -84,6 +96,11 @@ public abstract class Client implements Closeable {
         if (connection != null) {
             connection.close();
         }
+    }
+
+    public void start(String clientId) throws JMSException {
+        this.clientId = clientId;
+        start();
     }
 
     public void start() throws JMSException {
@@ -106,6 +123,15 @@ public abstract class Client implements Closeable {
             jmx = new JMX();
         }
         return jmx;
+    }
+
+    protected TopicSubscriber getTopicSubscriber(String topicName, String subscriptionName) throws JMSException {
+        final Topic topic = getSession().createTopic(topicName);
+        return getSession().createDurableSubscriber(topic, subscriptionName);
+    }
+
+    public TopicSubscriber topicSubscriber(String topicName, String subscriptionName) throws JMSException {
+        return getTopicSubscriber(topicName, subscriptionName);
     }
 
     public Message createMessage() throws JMSException {

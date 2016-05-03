@@ -24,7 +24,9 @@
 package org.jboss.ce.amq.drain;
 
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.Iterator;
+import java.util.Set;
 
 import javax.jms.Message;
 
@@ -40,7 +42,6 @@ public class Main {
     private String consumerURL = Utils.getSystemPropertyOrEnvVar("consumer.url");
     private String consumerUsername = Utils.getSystemPropertyOrEnvVar("consumer.username");
     private String consumerPassword = Utils.getSystemPropertyOrEnvVar("consumer.password");
-    private String consumerClientId = Utils.getSystemPropertyOrEnvVar("consumer.clientId", "CE-AMQ");
 
     private String producerURL = Utils.getSystemPropertyOrEnvVar("producer.url");
     private String producerUsername = Utils.getSystemPropertyOrEnvVar("producer.username");
@@ -57,22 +58,23 @@ public class Main {
     }
 
     public void run() throws Exception {
-        try (Consumer consumer = new Consumer(consumerURL, consumerUsername, consumerPassword, consumerClientId)) {
-            consumer.start();
-            try (Producer producer = new Producer(producerURL, producerUsername, producerPassword)) {
-                producer.start();
+        try (Producer queueProducer = new Producer(producerURL, producerUsername, producerPassword)) {
+            queueProducer.start();
+
+            try (Consumer queueConsumer = new Consumer(consumerURL, consumerUsername, consumerPassword)) {
+                queueConsumer.start();
 
                 int counter;
 
                 // drain queues
                 Function<String> qFn = new QueueFunction();
-                Collection<DestinationHandle> queues = consumer.getJMX().queues();
+                Collection<DestinationHandle> queues = queueConsumer.getJMX().queues();
                 log.info(String.format("Found queues: %s", queues));
                 for (DestinationHandle handle : queues) {
                     counter = 0;
-                    String queue = qFn.apply(consumer.getJMX(), handle);
-                    Producer.ProducerProcessor processor = producer.processQueueMessages(queue);
-                    Iterator<Message> iter = consumer.consumeQueue(handle, queue);
+                    String queue = qFn.apply(queueConsumer.getJMX(), handle);
+                    Producer.ProducerProcessor processor = queueProducer.processQueueMessages(queue);
+                    Iterator<Message> iter = queueConsumer.consumeQueue(handle, queue);
                     while (iter.hasNext()) {
                         Message next = iter.next();
                         processor.processMessage(next);
@@ -80,24 +82,44 @@ public class Main {
                     }
                     log.info(String.format("Handled %s messages for queue '%s'.", counter, queue));
                 }
+            }
+        }
 
-                // drain durable topic subscribers
-                Function<DTSFunction.Pair> tFn = new DTSFunction();
-                Collection<DestinationHandle> topics = consumer.getJMX().durableTopicSubscribers();
-                log.info(String.format("Found durable topic subscribers: %s", topics));
-                for (DestinationHandle handle : topics) {
-                    counter = 0;
-                    DTSFunction.Pair pair = tFn.apply(consumer.getJMX(), handle);
-                    Producer.ProducerProcessor processor = producer.processTopicMessages(pair.topic);
-                    Iterator<Message> iter = consumer.consumeDurableTopicSubscriptions(handle, pair.topic, pair.subscriptionName);
-                    while (iter.hasNext()) {
-                        Message next = iter.next();
-                        processor.processMessage(next);
-                        counter++;
+        try (Consumer dtsConsumer = new Consumer(consumerURL, consumerUsername, consumerPassword)) {
+            int counter;
+            // drain durable topic subscribers
+            Set<String> ids = new HashSet<>();
+            Function<DTSFunction.Tuple> tFn = new DTSFunction();
+            Collection<DestinationHandle> topics = dtsConsumer.getJMX().durableTopicSubscribers();
+            log.info(String.format("Found durable topic subscribers: %s", topics));
+            for (DestinationHandle handle : topics) {
+                counter = 0;
+                DTSFunction.Tuple tuple = tFn.apply(dtsConsumer.getJMX(), handle);
+                try (Producer dtsProducer = new Producer(producerURL, producerUsername, producerPassword)) {
+                    dtsProducer.start(tuple.clientId);
+
+                    dtsProducer.getTopicSubscriber(tuple.topic, tuple.subscriptionName); // just create dts on producer-side
+
+                    Producer.ProducerProcessor processor = dtsProducer.processTopicMessages(tuple.topic);
+                    dtsConsumer.getJMX().disconnect(tuple.clientId);
+                    dtsConsumer.start(tuple.clientId);
+                    try {
+                        Iterator<Message> iter = dtsConsumer.consumeDurableTopicSubscriptions(handle, tuple.topic, tuple.subscriptionName);
+                        while (iter.hasNext()) {
+                            Message next = iter.next();
+                            if (ids.add(next.getJMSMessageID())) {
+                                processor.processMessage(next);
+                                counter++;
+                            }
+                        }
+                        log.info(String.format("Handled %s messages for topic '%s' [%s].", counter, tuple.topic, tuple.subscriptionName));
+                    } finally {
+                        //noinspection ThrowFromFinallyBlock
+                        dtsConsumer.stop();
                     }
-                    log.info(String.format("Handled %s messages for topic '%s' [%s].", counter, pair.topic, pair.subscriptionName));
                 }
             }
+            log.info(String.format("Consumed %s messages.", ids.size()));
         }
     }
 }

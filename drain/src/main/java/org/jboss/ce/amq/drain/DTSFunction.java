@@ -29,20 +29,27 @@ import javax.management.ObjectName;
 /**
  * @author <a href="mailto:ales.justin@jboss.org">Ales Justin</a>
  */
-class DTSFunction implements Function<DTSFunction.Pair> {
-    public Pair apply(JMX jmx, DestinationHandle handle) throws Exception {
+class DTSFunction implements Function<DTSFunction.Tuple> {
+    public Tuple apply(JMX jmx, DestinationHandle handle) throws Exception {
         return apply(jmx.createJmxConnection(), handle.getObjectName());
     }
 
-    private Pair apply(MBeanServerConnection connection, ObjectName objectName) throws Exception {
-        Pair pair = new Pair();
-        pair.topic = JMX.getAttribute(String.class, connection, objectName, "DestinationName");
-        pair.subscriptionName = JMX.getAttribute(String.class, connection, objectName, "SubscriptionName");
-        return pair;
+    private Tuple apply(MBeanServerConnection connection, ObjectName objectName) throws Exception {
+        String clientId = JMX.getAttribute(String.class, connection, objectName, "ClientId");
+        String topic = JMX.getAttribute(String.class, connection, objectName, "DestinationName");
+        String subscriptionName = JMX.getAttribute(String.class, connection, objectName, "SubscriptionName");
+        return new Tuple(clientId, topic, subscriptionName);
     }
 
-    public static class Pair {
-        public String topic;
-        public String subscriptionName;
+    public static class Tuple {
+        public final String clientId;
+        public final String topic;
+        public final String subscriptionName;
+
+        public Tuple(String clientId, String topic, String subscriptionName) {
+            this.clientId = clientId;
+            this.topic = topic;
+            this.subscriptionName = subscriptionName;
+        }
     }
 }
