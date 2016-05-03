@@ -57,7 +57,7 @@ import org.slf4j.LoggerFactory;
  */
 class JMX {
     private static final Logger log = LoggerFactory.getLogger(JMX.class);
-    private static final String queryString = "type=Broker,brokerName=%s,destinationType=%s,destinationName=%s";
+    private static final String brokerQueryString = "type=Broker,brokerName=%s";
 
     private static String BROKER_NAME;
     private static String DEFAULT_JMX_URL;
@@ -77,47 +77,53 @@ class JMX {
         jmxPassword = Utils.getSystemPropertyOrEnvVar("activemq.jmx.password");
     }
 
-    Collection<String> queues() throws Exception {
-        return destinations("Queue");
+    Collection<DestinationHandle> queues() throws Exception {
+        return destinations("Queues");
     }
 
-    Collection<String> topics() throws Exception {
-        return destinations("Topic");
+    Collection<DestinationHandle> durableTopicSubscribers() throws Exception {
+        return destinations("InactiveDurableTopicSubscribers");
     }
 
-    boolean hasNextMessage(DestinationInfo info) throws Exception {
-        String query = query(info.getType(), info.getName());
-        List<ObjectInstance> mbeans = queryMBeans(createJmxConnection(), query);
-        for (ObjectInstance mbean : mbeans) {
-            ObjectName objectName = mbean.getObjectName();
-            AttributeList attributes = createJmxConnection().getAttributes(objectName, new String[]{info.getAttribute()});
-            if (attributes.size() > 0) {
-                Object value = attributes.asList().get(0).getValue();
-                Number number = Number.class.cast(value);
-                return (number.longValue() > 0);
-            }
+    boolean hasNextMessage(ObjectName objectName, String attributeName) throws Exception {
+        AttributeList attributes = createJmxConnection().getAttributes(objectName, new String[]{attributeName});
+        if (attributes.size() > 0) {
+            Object value = attributes.asList().get(0).getValue();
+            Number number = Number.class.cast(value);
+            return (number.longValue() > 0);
         }
         return false;
     }
 
-    private String query(String type, String name) {
-        return String.format(queryString, BROKER_NAME, type, name);
+    private String brokerQuery() {
+        return String.format(brokerQueryString, BROKER_NAME);
     }
 
-    private Collection<String> destinations(String type) throws Exception {
-        String query = query(type, "*,*");
+    private Collection<DestinationHandle> destinations(String type) throws Exception {
+        String query = brokerQuery();
         List<ObjectInstance> mbeans = queryMBeans(createJmxConnection(), query);
-        List<String> destinations = new ArrayList<>();
+        List<DestinationHandle> destinations = new ArrayList<>();
         for (ObjectInstance mbean : mbeans) {
             ObjectName objectName = mbean.getObjectName();
-            AttributeList attributes = createJmxConnection().getAttributes(objectName, new String[]{"Name"});
-            // not all mbeans are exactly queues and topics -- don't have Name (they have DestinationName, still OK?)
-            if (attributes.size() > 0) {
-                String name = attributes.asList().get(0).getValue().toString();
-                destinations.add(name);
+            ObjectName[] names = getAttribute(ObjectName[].class, objectName, type);
+            for (ObjectName on : names) {
+                destinations.add(new DestinationHandle(on));
             }
         }
         return destinations;
+    }
+
+    <T> T getAttribute(Class<T> type, ObjectName objectName, String attributeName) throws Exception {
+        return getAttribute(type, createJmxConnection(), objectName, attributeName);
+    }
+
+    static <T> T getAttribute(Class<T> type, MBeanServerConnection connection, ObjectName objectName, String attributeName) throws Exception {
+        AttributeList attributes = connection.getAttributes(objectName, new String[]{attributeName});
+        if (attributes.size() > 0) {
+            Object value = attributes.asList().get(0).getValue();
+            return type.cast(value);
+        }
+        return null;
     }
 
     // ActiveMQ impl details
@@ -151,7 +157,7 @@ class JMX {
         return getJVM().equals("Sun Microsystems Inc.") || getJVM().startsWith("Oracle");
     }
 
-    private MBeanServerConnection createJmxConnection() throws IOException {
+    MBeanServerConnection createJmxConnection() throws IOException {
         if (jmxConnection == null) {
             jmxConnection = createJmxConnector().getMBeanServerConnection();
         }

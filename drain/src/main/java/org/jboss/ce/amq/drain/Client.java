@@ -70,6 +70,9 @@ public abstract class Client implements Closeable {
         return new ActiveMQConnectionFactory(url);
     }
 
+    protected void init(Connection connection) throws JMSException {
+    }
+
     public void close() throws IOException {
         try {
             close(connection);
@@ -86,6 +89,7 @@ public abstract class Client implements Closeable {
     public void start() throws JMSException {
         ConnectionFactory cf = getConnectionFactory();
         connection = cf.createConnection(username, password);
+        init(connection);
         session = connection.createSession(false, Session.AUTO_ACKNOWLEDGE);
         connection.start();
     }

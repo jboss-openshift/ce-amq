@@ -23,9 +23,9 @@
 
 package org.jboss.test.ce.amq;
 
-import java.util.Iterator;
-
 import javax.jms.Message;
+import javax.jms.MessageConsumer;
+import javax.jms.TopicSubscriber;
 
 import org.jboss.ce.amq.drain.Consumer;
 import org.jboss.ce.amq.drain.Utils;
@@ -36,31 +36,36 @@ import org.junit.Test;
  */
 public class ConsumerTest {
 
-    private static final String URL = Utils.getSystemPropertyOrEnvVar("consumer.test.url", "tcp://localhost:61626");
+    private static final String URL = Utils.getSystemPropertyOrEnvVar("consumer.test.url", "tcp://localhost:61616");
 
     private static final String QUEUE = Utils.getSystemPropertyOrEnvVar("consumer.test.queue", "QUEUES.FOO");
     private static final String TOPIC = Utils.getSystemPropertyOrEnvVar("consumer.test.topic", "TOPICS.FOO");
+    private static final String SUBSCRIPTION_NAME = Utils.getSystemPropertyOrEnvVar("consumer.test.subscription", "BAR");
+
+    private static final long TIMEOUT = 3000;
 
     @Test
     public void testConsumeQueue() throws Exception {
-        try (Consumer consumer = new Consumer(URL, null, null)) {
+        try (Consumer consumer = new Consumer(URL, null, null, "tmp123")) {
             consumer.start();
 
-            Iterator<Message> iterator = consumer.consumeQueue(QUEUE);
-            while (iterator.hasNext()) {
-                System.out.println(iterator.next());
+            MessageConsumer mc = consumer.queueConsumer(QUEUE);
+            Message message;
+            while ((message = mc.receive(TIMEOUT)) != null) {
+                System.out.println(message);
             }
         }
     }
 
     @Test
     public void testConsumeTopic() throws Exception {
-        try (Consumer consumer = new Consumer(URL, null, null)) {
+        try (Consumer consumer = new Consumer(URL, null, null, "tmp123")) {
             consumer.start();
 
-            Iterator<Message> iterator = consumer.consumeTopic(TOPIC);
-            while (iterator.hasNext()) {
-                System.out.println(iterator.next());
+            TopicSubscriber ts = consumer.topicSubscriber(TOPIC, SUBSCRIPTION_NAME);
+            Message message;
+            while ((message = ts.receive(TIMEOUT)) != null) {
+                System.out.println(message);
             }
         }
     }

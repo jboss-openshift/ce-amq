@@ -25,63 +25,71 @@ package org.jboss.ce.amq.drain;
 
 import java.util.Iterator;
 
+import javax.jms.Connection;
 import javax.jms.Destination;
 import javax.jms.JMSException;
 import javax.jms.Message;
 import javax.jms.MessageConsumer;
 import javax.jms.Queue;
 import javax.jms.Topic;
+import javax.jms.TopicSubscriber;
+
+import sun.security.krb5.internal.crypto.Des;
 
 /**
  * @author <a href="mailto:ales.justin@jboss.org">Ales Justin</a>
  */
 public class Consumer extends Client {
-    public Consumer(String url, String username, String password) {
+    private final String clientId;
+
+    public Consumer(String url, String username, String password, String clientId) {
         super(url, username, password);
+        this.clientId = clientId;
     }
 
-    public Iterator<Message> consumeQueue(String queueName) throws JMSException {
-        final Queue queue = getSession().createQueue(queueName);
-        DestinationInfo info = new DestinationInfo() {
-            public String getType() {
-                return "Queue";
-            }
-
-            public String getName() throws JMSException {
-                return queue.getQueueName();
-            }
-
-            public String getAttribute() {
-                return "QueueSize";
-            }
-        };
-        return consumeMessages(queue, info);
+    @Override
+    protected void init(Connection connection) throws JMSException {
+        super.init(connection);
+        connection.setClientID(clientId);
     }
 
-    public Iterator<Message> consumeTopic(String topicName) throws JMSException {
+    private Queue createQueue(String queueName) throws JMSException {
+        return getSession().createQueue(queueName);
+    }
+
+    private TopicSubscriber getTopicSubscriber(String topicName, String subscriptionName) throws JMSException {
         final Topic topic = getSession().createTopic(topicName);
-        DestinationInfo info = new DestinationInfo() {
-            public String getType() {
-                return "Topic";
-            }
-
-            public String getName() throws JMSException {
-                return topic.getTopicName();
-            }
-
-            public String getAttribute() {
-                return "InFlightCount"; // TODO -- which attribute??
-            }
-        };
-        return consumeMessages(topic, info);
+        return getSession().createDurableSubscriber(topic, subscriptionName);
     }
 
-    private Iterator<Message> consumeMessages(Destination destination, final DestinationInfo info) throws JMSException {
+    public MessageConsumer queueConsumer(String queueName) throws JMSException {
+        return getSession().createConsumer(createQueue(queueName));
+    }
+
+    public TopicSubscriber topicSubscriber(String topicName, String subscriptionName) throws JMSException {
+        return getTopicSubscriber(topicName, subscriptionName);
+    }
+
+    public Iterator<Message> consumeQueue(DestinationHandle handle, String queueName) throws JMSException {
+        final Queue queue = createQueue(queueName);
+        return consumeMessages(queue, handle, "QueueSize");
+    }
+
+    public Iterator<Message> consumeDurableTopicSubscriptions(DestinationHandle handle, String topicName, String subscriptionName) throws JMSException {
+        TopicSubscriber subscriber = getTopicSubscriber(topicName, subscriptionName);
+        return consumeMessages(subscriber, handle, "PendingQueueSize");
+    }
+
+    private Iterator<Message> consumeMessages(Destination destination, DestinationHandle handle, String attributeName) throws JMSException {
         final MessageConsumer consumer = getSession().createConsumer(destination);
+        return consumeMessages(consumer, handle, attributeName);
+    }
+
+    private Iterator<Message> consumeMessages(final MessageConsumer consumer, final DestinationHandle handle, final String attributeName) throws JMSException {
         return new Iterator<Message>() {
             public boolean hasNext() {
                 try {
-                    return getJMX().hasNextMessage(info);
+                    return getJMX().hasNextMessage(handle.getObjectName(), attributeName);
                 } catch (Exception e) {
                     throw new IllegalStateException(e);
                 }

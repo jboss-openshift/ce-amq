@@ -40,6 +40,7 @@ public class Main {
     private String consumerURL = Utils.getSystemPropertyOrEnvVar("consumer.url");
     private String consumerUsername = Utils.getSystemPropertyOrEnvVar("consumer.username");
     private String consumerPassword = Utils.getSystemPropertyOrEnvVar("consumer.password");
+    private String consumerClientId = Utils.getSystemPropertyOrEnvVar("consumer.clientId", "CE-AMQ");
 
     private String producerURL = Utils.getSystemPropertyOrEnvVar("producer.url");
     private String producerUsername = Utils.getSystemPropertyOrEnvVar("producer.username");
@@ -56,7 +57,7 @@ public class Main {
     }
 
     public void run() throws Exception {
-        try (Consumer consumer = new Consumer(consumerURL, consumerUsername, consumerPassword)) {
+        try (Consumer consumer = new Consumer(consumerURL, consumerUsername, consumerPassword, consumerClientId)) {
             consumer.start();
             try (Producer producer = new Producer(producerURL, producerUsername, producerPassword)) {
                 producer.start();
@@ -64,36 +65,38 @@ public class Main {
                 int counter;
 
                 // drain queues
-                Collection<String> queues = consumer.getJMX().queues();
+                Function<String> qFn = new QueueFunction();
+                Collection<DestinationHandle> queues = consumer.getJMX().queues();
                 log.info(String.format("Found queues: %s", queues));
-                for (String queue : queues) {
+                for (DestinationHandle handle : queues) {
                     counter = 0;
-                    Producer.ProducerProcessor handle = producer.processQueueMessages(queue);
-                    Iterator<Message> iter = consumer.consumeQueue(queue);
+                    String queue = qFn.apply(consumer.getJMX(), handle);
+                    Producer.ProducerProcessor processor = producer.processQueueMessages(queue);
+                    Iterator<Message> iter = consumer.consumeQueue(handle, queue);
                     while (iter.hasNext()) {
                         Message next = iter.next();
-                        handle.processMessage(next);
+                        processor.processMessage(next);
                         counter++;
                     }
                     log.info(String.format("Handled %s messages for queue '%s'.", counter, queue));
                 }
 
-                // drain topics
-                /*
-                Collection<String> topics = consumer.getJMX().topics();
-                log.info(String.format("Found topics: %s", topics));
-                for (String topic : topics) {
+                // drain durable topic subscribers
+                Function<DTSFunction.Pair> tFn = new DTSFunction();
+                Collection<DestinationHandle> topics = consumer.getJMX().durableTopicSubscribers();
+                log.info(String.format("Found durable topic subscribers: %s", topics));
+                for (DestinationHandle handle : topics) {
                     counter = 0;
-                    Producer.ProducerProcessor handle = producer.processTopicMessages(topic);
-                    Iterator<Message> iter = consumer.consumeTopic(topic);
+                    DTSFunction.Pair pair = tFn.apply(consumer.getJMX(), handle);
+                    Producer.ProducerProcessor processor = producer.processTopicMessages(pair.topic);
+                    Iterator<Message> iter = consumer.consumeDurableTopicSubscriptions(handle, pair.topic, pair.subscriptionName);
                     while (iter.hasNext()) {
                         Message next = iter.next();
-                        handle.processMessage(next);
+                        processor.processMessage(next);
                         counter++;
                     }
-                    log.info(String.format("Handled %s messages for topic '%s'.", counter, topic));
+                    log.info(String.format("Handled %s messages for topic '%s' [%s].", counter, pair.topic, pair.subscriptionName));
                 }
-                */
             }
         }
     }
