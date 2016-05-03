@@ -98,7 +98,7 @@ public class Main {
                 try (Producer dtsProducer = new Producer(producerURL, producerUsername, producerPassword)) {
                     dtsProducer.start(tuple.clientId);
 
-                    dtsProducer.getTopicSubscriber(tuple.topic, tuple.subscriptionName); // just create dts on producer-side
+                    dtsProducer.getTopicSubscriber(tuple.topic, tuple.subscriptionName).close(); // just create dts on producer-side
 
                     Producer.ProducerProcessor processor = dtsProducer.processTopicMessages(tuple.topic);
                     dtsConsumer.getJMX().disconnect(tuple.clientId);
