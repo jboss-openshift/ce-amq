@@ -23,39 +23,13 @@
 
 package org.jboss.test.ce.amq;
 
-import javax.jms.TextMessage;
-
-import org.jboss.ce.amq.drain.Producer;
 import org.jboss.ce.amq.drain.Utils;
-import org.junit.Test;
 
 /**
  * @author <a href="mailto:ales.justin@jboss.org">Ales Justin</a>
  */
-public class ProducerTest extends TestBase {
-
-    private static final String URL = Utils.getSystemPropertyOrEnvVar("producer.test.url", "tcp://localhost:61616");
-
-    @Test
-    public void testProduceQueue() throws Exception {
-        try (Producer producer = new Producer(URL, null, null)) {
-            producer.start();
-
-            Producer.ProducerProcessor handle = producer.processQueueMessages(QUEUE);
-            TextMessage message = producer.createTextMessage("TEST -- queue + " + System.currentTimeMillis());
-            handle.processMessage(message);
-        }
-    }
-
-    @Test
-    public void testProduceTopic() throws Exception {
-        try (Producer producer = new Producer(URL, null, null)) {
-            producer.start();
-
-            Producer.ProducerProcessor handle = producer.processTopicMessages(TOPIC);
-            TextMessage message = producer.createTextMessage("TEST -- topic + " + System.currentTimeMillis());
-            handle.processMessage(message);
-        }
-    }
-
+public abstract class TestBase {
+    static final String QUEUE = Utils.getSystemPropertyOrEnvVar("test.queue", "QUEUES.FOO");
+    static final String TOPIC = Utils.getSystemPropertyOrEnvVar("test.topic", "TOPICS.FOO");
+    static final String SUBSCRIPTION_NAME = Utils.getSystemPropertyOrEnvVar("test.subscription", "BAR");
 }

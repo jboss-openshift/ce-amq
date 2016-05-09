@@ -34,13 +34,9 @@ import org.junit.Test;
 /**
  * @author <a href="mailto:ales.justin@jboss.org">Ales Justin</a>
  */
-public class ConsumerTest {
+public class ConsumerTest extends TestBase {
 
     private static final String URL = Utils.getSystemPropertyOrEnvVar("consumer.test.url", "tcp://localhost:61616");
-
-    private static final String QUEUE = Utils.getSystemPropertyOrEnvVar("consumer.test.queue", "QUEUES.FOO");
-    private static final String TOPIC = Utils.getSystemPropertyOrEnvVar("consumer.test.topic", "TOPICS.FOO");
-    private static final String SUBSCRIPTION_NAME = Utils.getSystemPropertyOrEnvVar("consumer.test.subscription", "BAR");
 
     private static final long TIMEOUT = 3000;
 
