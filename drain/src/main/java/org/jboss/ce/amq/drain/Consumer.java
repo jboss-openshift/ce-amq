@@ -40,6 +40,8 @@ import sun.security.krb5.internal.crypto.Des;
  * @author <a href="mailto:ales.justin@jboss.org">Ales Justin</a>
  */
 public class Consumer extends Client {
+    private int pendingQueueSize;
+
     public Consumer(String url, String username, String password) {
         this(url, username, password, null);
     }
@@ -61,21 +63,30 @@ public class Consumer extends Client {
         return consumeMessages(queue, handle, "QueueSize");
     }
 
-    public Iterator<Message> consumeDurableTopicSubscriptions(DestinationHandle handle, String topicName, String subscriptionName) throws JMSException {
+    public Iterator<Message> consumeDurableTopicSubscriptions(DestinationHandle handle, String topicName, String subscriptionName) throws Exception {
+        pendingQueueSize = getJMX().getAttribute(Number.class, handle.getObjectName(), "PendingQueueSize").intValue();
         TopicSubscriber subscriber = getTopicSubscriber(topicName, subscriptionName);
-        return consumeMessages(subscriber, handle, "PendingQueueSize");
+        return consumeMessages(subscriber, new NextChecker() {
+            public boolean hasNext() throws Exception {
+                return (pendingQueueSize-- > 0);
+            }
+        });
     }
 
-    private Iterator<Message> consumeMessages(Destination destination, DestinationHandle handle, String attributeName) throws JMSException {
+    private Iterator<Message> consumeMessages(Destination destination, final DestinationHandle handle, final String attributeName) throws JMSException {
         final MessageConsumer consumer = getSession().createConsumer(destination);
-        return consumeMessages(consumer, handle, attributeName);
+        return consumeMessages(consumer, new NextChecker() {
+            public boolean hasNext() throws Exception {
+                return getJMX().hasNextMessage(handle.getObjectName(), attributeName);
+            }
+        });
     }
 
-    private Iterator<Message> consumeMessages(final MessageConsumer consumer, final DestinationHandle handle, final String attributeName) throws JMSException {
+    private Iterator<Message> consumeMessages(final MessageConsumer consumer, final NextChecker checker) throws JMSException {
         return new Iterator<Message>() {
             public boolean hasNext() {
                 try {
-                    return getJMX().hasNextMessage(handle.getObjectName(), attributeName);
+                    return checker.hasNext();
                 } catch (Exception e) {
                     throw new IllegalStateException(e);
                 }
@@ -92,5 +103,9 @@ public class Consumer extends Client {
             public void remove() {
             }
         };
+    }
+
+    private interface NextChecker {
+        boolean hasNext() throws Exception;
     }
 }
