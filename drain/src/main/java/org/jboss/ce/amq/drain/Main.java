@@ -77,7 +77,7 @@ public class Main {
                 // drain queues
                 Function<String> qFn = new QueueFunction();
                 Collection<DestinationHandle> queues = queueConsumer.getJMX().queues();
-                log.info(String.format("Found queues: %s", queues));
+                log.info("Found queues: {}", queues);
                 for (DestinationHandle handle : queues) {
                     counter = 0;
                     String queue = qFn.apply(queueConsumer.getJMX(), handle);
@@ -88,7 +88,7 @@ public class Main {
                         processor.processMessage(next);
                         counter++;
                     }
-                    log.info(String.format("Handled %s messages for queue '%s'.", counter, queue));
+                    log.info("Handled {} messages for queue '{}'.", counter, queue);
                 }
             }
         }
@@ -99,7 +99,7 @@ public class Main {
             Set<String> ids = new HashSet<>();
             Function<DTSFunction.Tuple> tFn = new DTSFunction();
             Collection<DestinationHandle> topics = dtsConsumer.getJMX().durableTopicSubscribers();
-            log.info(String.format("Found durable topic subscribers: %s", topics));
+            log.info("Found durable topic subscribers: {}", topics);
             for (DestinationHandle handle : topics) {
                 counter = 0;
                 DTSFunction.Tuple tuple = tFn.apply(dtsConsumer.getJMX(), handle);
@@ -120,14 +120,14 @@ public class Main {
                                 counter++;
                             }
                         }
-                        log.info(String.format("Handled %s messages for topic '%s' [%s].", counter, tuple.topic, tuple.subscriptionName));
+                        log.info("Handled {} messages for topic '{}' [{}].", counter, tuple.topic, tuple.subscriptionName);
                     } finally {
                         //noinspection ThrowFromFinallyBlock
                         dtsConsumer.stop();
                     }
                 }
             }
-            log.info(String.format("Consumed %s messages.", ids.size()));
+            log.info("Consumed {} messages.", ids.size());
         }
     }
 }
