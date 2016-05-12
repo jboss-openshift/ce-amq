@@ -39,7 +39,7 @@ import org.slf4j.LoggerFactory;
 public class Main {
     private static final Logger log = LoggerFactory.getLogger(Main.class);
 
-    private String consumerURL = Utils.getSystemPropertyOrEnvVar("consumer.url");
+    private String consumerURL = Utils.getSystemPropertyOrEnvVar("consumer.url", "tcp://localhost:61616");
     private String consumerUsername = Utils.getSystemPropertyOrEnvVar("consumer.username");
     private String consumerPassword = Utils.getSystemPropertyOrEnvVar("consumer.password");
 
@@ -57,8 +57,16 @@ public class Main {
         }
     }
 
+    protected String getProducerURL() {
+        if (producerURL == null) {
+            String appName = Utils.getSystemPropertyOrEnvVar("application.name");
+            producerURL = "tcp://" + Utils.getSystemPropertyOrEnvVar(appName + ".amq.tcp.service.host") + ":61616";
+        }
+        return producerURL;
+    }
+
     public void run() throws Exception {
-        try (Producer queueProducer = new Producer(producerURL, producerUsername, producerPassword)) {
+        try (Producer queueProducer = new Producer(getProducerURL(), producerUsername, producerPassword)) {
             queueProducer.start();
 
             try (Consumer queueConsumer = new Consumer(consumerURL, consumerUsername, consumerPassword)) {
@@ -95,7 +103,7 @@ public class Main {
             for (DestinationHandle handle : topics) {
                 counter = 0;
                 DTSFunction.Tuple tuple = tFn.apply(dtsConsumer.getJMX(), handle);
-                try (Producer dtsProducer = new Producer(producerURL, producerUsername, producerPassword)) {
+                try (Producer dtsProducer = new Producer(getProducerURL(), producerUsername, producerPassword)) {
                     dtsProducer.start(tuple.clientId);
 
                     dtsProducer.getTopicSubscriber(tuple.topic, tuple.subscriptionName).close(); // just create dts on producer-side
