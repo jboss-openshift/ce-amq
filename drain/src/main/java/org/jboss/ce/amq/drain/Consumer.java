@@ -25,23 +25,17 @@ package org.jboss.ce.amq.drain;
 
 import java.util.Iterator;
 
-import javax.jms.Connection;
 import javax.jms.Destination;
 import javax.jms.JMSException;
 import javax.jms.Message;
 import javax.jms.MessageConsumer;
 import javax.jms.Queue;
-import javax.jms.Topic;
 import javax.jms.TopicSubscriber;
-
-import sun.security.krb5.internal.crypto.Des;
 
 /**
  * @author <a href="mailto:ales.justin@jboss.org">Ales Justin</a>
  */
 public class Consumer extends Client {
-    private int pendingQueueSize;
-
     public Consumer(String url, String username, String password) {
         this(url, username, password, null);
     }
@@ -64,13 +58,9 @@ public class Consumer extends Client {
     }
 
     public Iterator<Message> consumeDurableTopicSubscriptions(DestinationHandle handle, String topicName, String subscriptionName) throws Exception {
-        pendingQueueSize = getJMX().getAttribute(Number.class, handle.getObjectName(), "PendingQueueSize").intValue();
+        int pendingQueueSize = getJMX().getAttribute(Number.class, handle.getObjectName(), "PendingQueueSize").intValue();
         TopicSubscriber subscriber = getTopicSubscriber(topicName, subscriptionName);
-        return consumeMessages(subscriber, new NextChecker() {
-            public boolean hasNext() throws Exception {
-                return (pendingQueueSize-- > 0);
-            }
-        });
+        return consumeMessages(subscriber, new PendingQueueSizeChecker(pendingQueueSize));
     }
 
     private Iterator<Message> consumeMessages(Destination destination, final DestinationHandle handle, final String attributeName) throws JMSException {
@@ -107,5 +97,17 @@ public class Consumer extends Client {
 
     private interface NextChecker {
         boolean hasNext() throws Exception;
+    }
+
+    private static class PendingQueueSizeChecker implements NextChecker {
+        private int size;
+
+        public PendingQueueSizeChecker(int size) {
+            this.size = size;
+        }
+
+        public boolean hasNext() throws Exception {
+            return (size-- > 0);
+        }
     }
 }
