@@ -34,8 +34,13 @@ public class PokeJMX extends AbstractJMX {
     private static final Logger log = Logger.getLogger(PokeJMX.class.getName());
 
     public static void main(String[] args) throws Exception {
-        PokeJMX jmx = new PokeJMX();
-        jmx.list(args);
+        if (args == null || args.length == 0) {
+            System.out.println("Sleeping ...");
+            Thread.sleep(10 * 60 * 1000L);
+        } else {
+            PokeJMX jmx = new PokeJMX();
+            jmx.list(args);
+        }
     }
 
     private void list(String[] args) throws Exception {
