@@ -35,6 +35,8 @@ public class PokeJMX extends AbstractJMX {
 
     public static void main(String[] args) throws Exception {
         if (args == null || args.length == 0) {
+            System.out.println(System.getProperties());
+            System.out.println("------------");
             System.out.println("Sleeping ...");
             Thread.sleep(10 * 60 * 1000L);
         } else {
