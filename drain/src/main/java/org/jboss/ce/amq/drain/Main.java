@@ -40,12 +40,12 @@ public class Main {
     private static final Logger log = LoggerFactory.getLogger(Main.class);
 
     private String consumerURL = Utils.getSystemPropertyOrEnvVar("consumer.url", "tcp://localhost:61616");
-    private String consumerUsername = Utils.getSystemPropertyOrEnvVar("consumer.username");
-    private String consumerPassword = Utils.getSystemPropertyOrEnvVar("consumer.password");
+    private String consumerUsername = Utils.getSystemPropertyOrEnvVar("consumer.username", Utils.getSystemPropertyOrEnvVar("amq.user"));
+    private String consumerPassword = Utils.getSystemPropertyOrEnvVar("consumer.password", Utils.getSystemPropertyOrEnvVar("amq.password"));
 
     private String producerURL = Utils.getSystemPropertyOrEnvVar("producer.url");
-    private String producerUsername = Utils.getSystemPropertyOrEnvVar("producer.username");
-    private String producerPassword = Utils.getSystemPropertyOrEnvVar("producer.password");
+    private String producerUsername = Utils.getSystemPropertyOrEnvVar("producer.username", Utils.getSystemPropertyOrEnvVar("amq.user"));
+    private String producerPassword = Utils.getSystemPropertyOrEnvVar("producer.password", Utils.getSystemPropertyOrEnvVar("amq.password"));
 
     public static void main(String[] args) {
         try {
