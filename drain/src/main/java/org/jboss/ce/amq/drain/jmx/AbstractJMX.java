@@ -88,8 +88,8 @@ abstract class AbstractJMX {
 
     // ActiveMQ impl details
 
-    protected static List<ObjectInstance> queryMBeans(MBeanServerConnection jmxConnection, String queryString) throws Exception {
-        return new MBeansObjectNameQueryFilter(jmxConnection).query(queryString);
+    protected List<ObjectInstance> queryMBeans(MBeanServerConnection jmxConnection, String queryString) throws Exception {
+        return new MBeansObjectNameQueryFilter(this, jmxConnection).query(queryString);
     }
 
     protected abstract void print(String msg);
@@ -104,15 +104,6 @@ abstract class AbstractJMX {
 
     private void setJmxServiceUrl(String jmxServiceUrl) throws MalformedURLException {
         setJmxServiceUrl(new JMXServiceURL(jmxServiceUrl));
-    }
-
-    private static String getJVM() {
-        return System.getProperty("java.vm.specification.vendor");
-    }
-
-    private static boolean isSunJVM() {
-        // need to check for Oracle as that is the name for Java7 onwards.
-        return getJVM().equals("Sun Microsystems Inc.") || getJVM().startsWith("Oracle");
     }
 
     MBeanServerConnection createJmxConnection() throws IOException {
@@ -216,9 +207,11 @@ abstract class AbstractJMX {
         static final String DEFAULT_JMX_DOMAIN = Utils.getSystemPropertyOrEnvVar("jmx.domain", "org.apache.activemq");
         static final String QUERY_EXP_PREFIX = "MBeans.QueryExp.";
 
+        private AbstractJMX jmx;
         private MBeanServerConnection jmxConnection;
 
-        private MBeansObjectNameQueryFilter(MBeanServerConnection jmxConnection) {
+        private MBeansObjectNameQueryFilter(AbstractJMX jmx, MBeanServerConnection jmxConnection) {
+            this.jmx = jmx;
             this.jmxConnection = jmxConnection;
         }
 
@@ -262,6 +255,7 @@ abstract class AbstractJMX {
 
         private List<ObjectInstance> queryMBeans(ObjectName objName, String queryExpStr) throws IOException {
             QueryExp queryExp = createQueryExp(queryExpStr);
+            jmx.print(String.format("ObjectName=%s,QueryString=%s,QueryExp=%s", objName, queryExpStr, queryExp));
             // Convert mbeans set to list to make it standard throughout the query filter
             return new ArrayList<>(jmxConnection.queryMBeans(objName, queryExp));
         }
