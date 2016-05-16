@@ -56,6 +56,8 @@ abstract class AbstractJMX {
     private static String jmxUser;
     private static String jmxPassword;
 
+    private static final String PATTERN;
+
     private static final String CONNECTOR_ADDRESS = "com.sun.management.jmxremote.localConnectorAddress";
 
     private JMXServiceURL jmxServiceUrl;
@@ -66,6 +68,7 @@ abstract class AbstractJMX {
         DEFAULT_JMX_URL = Utils.getSystemPropertyOrEnvVar("activemq.jmx.url", "service:jmx:rmi:///jndi/rmi://localhost:1099/jmxrmi");
         jmxUser = Utils.getSystemPropertyOrEnvVar("activemq.jmx.user");
         jmxPassword = Utils.getSystemPropertyOrEnvVar("activemq.jmx.password");
+        PATTERN = Utils.getSystemPropertyOrEnvVar("jmx.pattern", "activemq.jar start");
     }
 
     <T> T getAttribute(Class<T> type, ObjectName objectName, String attributeName) throws Exception {
@@ -166,7 +169,7 @@ abstract class AbstractJMX {
 
                     for (Object vmInstance : allVMs) {
                         String displayName = (String) getVMDescriptor.invoke(vmInstance, (Object[]) null);
-                        if (displayName.contains("activemq.jar start")) {
+                        if (displayName.contains(PATTERN)) {
                             String id = (String) getVMId.invoke(vmInstance, (Object[]) null);
 
                             Object vm = attachToVM.invoke(null, id);
