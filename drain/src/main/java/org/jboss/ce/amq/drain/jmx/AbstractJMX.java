@@ -213,7 +213,7 @@ abstract class AbstractJMX {
 
     private static class MBeansObjectNameQueryFilter {
         static final String QUERY_DELIMETER = ",";
-        static final String DEFAULT_JMX_DOMAIN = "org.apache.activemq";
+        static final String DEFAULT_JMX_DOMAIN = Utils.getSystemPropertyOrEnvVar("jmx.domain", "org.apache.activemq");
         static final String QUERY_EXP_PREFIX = "MBeans.QueryExp.";
 
         private MBeanServerConnection jmxConnection;
