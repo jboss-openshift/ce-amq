@@ -144,6 +144,7 @@ abstract class AbstractJMX {
                 // will try to use custom loader that will try to load tools.jar
 
                 String javaHome = System.getProperty("java.home");
+                print(String.format("java.home --> %s", javaHome));
 
                 File tools = JarFinder.findJar(javaHome, "tools.jar");
                 URLClassLoader loader = new URLClassLoader(new URL[]{tools.toURI().toURL()});
@@ -159,9 +160,11 @@ abstract class AbstractJMX {
                 Method getVMId = virtualMachineDescriptor.getMethod("id", (Class[]) null);
 
                 List allVMs = (List) getVMList.invoke(null, (Object[]) null);
+                print(String.format("Found %s VMs ...", allVMs.size()));
 
                 for (Object vmInstance : allVMs) {
                     String displayName = (String) getVMDescriptor.invoke(vmInstance, (Object[]) null);
+                    print(String.format("VM -- display-name: %s", displayName));
                     if (displayName.contains(PATTERN)) {
                         String id = (String) getVMId.invoke(vmInstance, (Object[]) null);
 
