@@ -120,7 +120,7 @@ public abstract class Client implements Closeable {
 
     public JMX getJMX() {
         if (jmx == null) {
-            jmx = new JMX();
+            jmx = JMXFactory.createJMX();
         }
         return jmx;
     }

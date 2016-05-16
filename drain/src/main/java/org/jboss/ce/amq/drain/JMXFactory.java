@@ -26,23 +26,8 @@ package org.jboss.ce.amq.drain;
 /**
  * @author <a href="mailto:ales.justin@jboss.org">Ales Justin</a>
  */
-class DTSFunction implements Function<DTSFunction.Tuple> {
-    public Tuple apply(JMX jmx, DestinationHandle handle) throws Exception {
-        String clientId = jmx.getAttribute(String.class, handle, "ClientId");
-        String topic = jmx.getAttribute(String.class, handle, "DestinationName");
-        String subscriptionName = jmx.getAttribute(String.class, handle, "SubscriptionName");
-        return new Tuple(clientId, topic, subscriptionName);
-    }
-
-    public static class Tuple {
-        public final String clientId;
-        public final String topic;
-        public final String subscriptionName;
-
-        public Tuple(String clientId, String topic, String subscriptionName) {
-            this.clientId = clientId;
-            this.topic = topic;
-            this.subscriptionName = subscriptionName;
-        }
+class JMXFactory {
+    static JMX createJMX() {
+        return new RemoteJMX();
     }
 }

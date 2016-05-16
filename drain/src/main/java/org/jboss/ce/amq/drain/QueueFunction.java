@@ -23,18 +23,11 @@
 
 package org.jboss.ce.amq.drain;
 
-import javax.management.MBeanServerConnection;
-import javax.management.ObjectName;
-
 /**
  * @author <a href="mailto:ales.justin@jboss.org">Ales Justin</a>
  */
 class QueueFunction implements Function<String> {
     public String apply(JMX jmx, DestinationHandle handle) throws Exception {
-        return apply(jmx.createJmxConnection(), handle.getObjectName());
-    }
-
-    String apply(MBeanServerConnection connection, ObjectName objectName) throws Exception {
-        return JMX.getAttribute(String.class, connection, objectName, "Name");
+        return jmx.getAttribute(String.class, handle, "Name");
     }
 }

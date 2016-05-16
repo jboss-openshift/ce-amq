@@ -23,80 +23,15 @@
 
 package org.jboss.ce.amq.drain;
 
-import java.util.ArrayList;
 import java.util.Collection;
-import java.util.List;
-
-import javax.management.AttributeList;
-import javax.management.ObjectInstance;
-import javax.management.ObjectName;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * @author <a href="mailto:ales.justin@jboss.org">Ales Justin</a>
  */
-class JMX extends AbstractJMX {
-    private static final Logger log = LoggerFactory.getLogger(JMX.class);
-    private static final String brokerQueryString = "type=Broker,brokerName=%s";
-    private static final String connectionQueryString = "type=Broker,brokerName=%s,connectionViewType=clientId,connectionName=%s";
-
-    private static String BROKER_NAME;
-
-    static {
-        BROKER_NAME = Utils.getSystemPropertyOrEnvVar("broker.name", "localhost");
-    }
-
-    Collection<DestinationHandle> queues() throws Exception {
-        return destinations("Queues");
-    }
-
-    Collection<DestinationHandle> durableTopicSubscribers() throws Exception {
-        return destinations("InactiveDurableTopicSubscribers");
-    }
-
-    void disconnect(String clientId) throws Exception {
-        String query = connectionQuery(clientId);
-        List<ObjectInstance> mbeans = queryMBeans(createJmxConnection(), query);
-        for (ObjectInstance mbean : mbeans) {
-            createJmxConnection().invoke(mbean.getObjectName(), "stop", new Object[0], new String[0]);
-        }
-    }
-
-    boolean hasNextMessage(ObjectName objectName, String attributeName) throws Exception {
-        AttributeList attributes = createJmxConnection().getAttributes(objectName, new String[]{attributeName});
-        if (attributes.size() > 0) {
-            Object value = attributes.asList().get(0).getValue();
-            Number number = Number.class.cast(value);
-            return (number.longValue() > 0);
-        }
-        return false;
-    }
-
-    private String brokerQuery() {
-        return String.format(brokerQueryString, BROKER_NAME);
-    }
-
-    private String connectionQuery(String clientId) {
-        return String.format(connectionQueryString, BROKER_NAME, clientId);
-    }
-
-    private Collection<DestinationHandle> destinations(String type) throws Exception {
-        String query = brokerQuery();
-        List<ObjectInstance> mbeans = queryMBeans(createJmxConnection(), query);
-        List<DestinationHandle> destinations = new ArrayList<>();
-        for (ObjectInstance mbean : mbeans) {
-            ObjectName objectName = mbean.getObjectName();
-            ObjectName[] names = getAttribute(ObjectName[].class, objectName, type);
-            for (ObjectName on : names) {
-                destinations.add(new DestinationHandle(on));
-            }
-        }
-        return destinations;
-    }
-
-    protected void print(String msg) {
-        log.info(msg);
-    }
+interface JMX {
+    Collection<DestinationHandle> queues() throws Exception;
+    Collection<DestinationHandle> durableTopicSubscribers() throws Exception;
+    void disconnect(String clientId) throws Exception;
+    boolean hasNextMessage(DestinationHandle handle, String attributeName) throws Exception;
+    <T> T getAttribute(Class<T> type, DestinationHandle handle, String attributeName) throws Exception;
 }

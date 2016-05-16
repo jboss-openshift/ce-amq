@@ -58,7 +58,7 @@ public class Consumer extends Client {
     }
 
     public Iterator<Message> consumeDurableTopicSubscriptions(DestinationHandle handle, String topicName, String subscriptionName) throws Exception {
-        int pendingQueueSize = getJMX().getAttribute(Number.class, handle.getObjectName(), "PendingQueueSize").intValue();
+        int pendingQueueSize = getJMX().getAttribute(Number.class, handle, "PendingQueueSize").intValue();
         TopicSubscriber subscriber = getTopicSubscriber(topicName, subscriptionName);
         return consumeMessages(subscriber, new PendingQueueSizeChecker(pendingQueueSize));
     }
@@ -67,7 +67,7 @@ public class Consumer extends Client {
         final MessageConsumer consumer = getSession().createConsumer(destination);
         return consumeMessages(consumer, new NextChecker() {
             public boolean hasNext() throws Exception {
-                return getJMX().hasNextMessage(handle.getObjectName(), attributeName);
+                return getJMX().hasNextMessage(handle, attributeName);
             }
         });
     }
