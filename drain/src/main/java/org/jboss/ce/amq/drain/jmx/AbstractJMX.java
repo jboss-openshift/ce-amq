@@ -23,8 +23,10 @@
 
 package org.jboss.ce.amq.drain.jmx;
 
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.lang.reflect.Method;
 import java.net.MalformedURLException;
 import java.net.URL;
@@ -131,6 +133,25 @@ abstract class AbstractJMX {
         return jmxConnector;
     }
 
+    private void dumpEnv() {
+        try {
+            print(String.format("user.name --> %s", System.getProperty("user.name")));
+            print("---");
+            String process;
+            // getRuntime: Returns the runtime object associated with the current Java application.
+            // exec: Executes the specified string command in a separate process.
+            Process p = Runtime.getRuntime().exec("ps auxwww");
+            try (BufferedReader input = new BufferedReader(new InputStreamReader(p.getInputStream()))) {
+                while ((process = input.readLine()) != null) {
+                    print(process); // <-- Print all Process here line by line
+                }
+            }
+            print("---");
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
     @SuppressWarnings("unchecked")
     private JMXServiceURL useJmxServiceUrl() throws MalformedURLException {
         if (getJmxServiceUrl() == null) {
@@ -161,6 +182,8 @@ abstract class AbstractJMX {
 
                 List allVMs = (List) getVMList.invoke(null, (Object[]) null);
                 print(String.format("Found %s VMs ...", allVMs.size()));
+
+                dumpEnv();
 
                 for (Object vmInstance : allVMs) {
                     String displayName = (String) getVMDescriptor.invoke(vmInstance, (Object[]) null);
