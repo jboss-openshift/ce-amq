@@ -21,7 +21,7 @@
  * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
  */
 
-package org.jboss.ce.amq.drain;
+package org.jboss.ce.amq.drain.jmx;
 
 import java.io.File;
 import java.io.IOException;
@@ -46,6 +46,8 @@ import javax.management.QueryExp;
 import javax.management.remote.JMXConnector;
 import javax.management.remote.JMXConnectorFactory;
 import javax.management.remote.JMXServiceURL;
+
+import org.jboss.ce.amq.drain.Utils;
 
 /**
  * @author ActiveMQ codebase
@@ -143,59 +145,59 @@ abstract class AbstractJMX {
         if (getJmxServiceUrl() == null) {
             String jmxUrl = DEFAULT_JMX_URL;
             int connectingPid = -1;
-            if (isSunJVM()) {
-                try {
-                    // Classes are all dynamically loaded, since they are specific to Sun VM
-                    // if it fails for any reason default jmx url will be used
+            try {
+                // Classes are all dynamically loaded, since they are specific to Sun VM
+                // if it fails for any reason default jmx url will be used
 
-                    // tools.jar are not always included used by default class loader, so we
-                    // will try to use custom loader that will try to load tools.jar
+                // tools.jar are not always included used by default class loader, so we
+                // will try to use custom loader that will try to load tools.jar
 
-                    String javaHome = System.getProperty("java.home");
-                    String tools = javaHome + File.separator + ".." + File.separator + "lib" + File.separator + "tools.jar";
-                    URLClassLoader loader = new URLClassLoader(new URL[]{new File(tools).toURI().toURL()});
+                String javaHome = System.getProperty("java.home");
 
-                    Class virtualMachine = Class.forName("com.sun.tools.attach.VirtualMachine", true, loader);
-                    Class virtualMachineDescriptor = Class.forName("com.sun.tools.attach.VirtualMachineDescriptor", true, loader);
+                File tools = JarFinder.findJar(javaHome, "tools.jar");
+                URLClassLoader loader = new URLClassLoader(new URL[]{tools.toURI().toURL()});
 
-                    Method getVMList = virtualMachine.getMethod("list", (Class[]) null);
-                    Method attachToVM = virtualMachine.getMethod("attach", String.class);
-                    Method getAgentProperties = virtualMachine.getMethod("getAgentProperties", (Class[]) null);
-                    Method loadAgent = virtualMachine.getMethod("loadAgent", String.class);
-                    Method getVMDescriptor = virtualMachineDescriptor.getMethod("displayName", (Class[]) null);
-                    Method getVMId = virtualMachineDescriptor.getMethod("id", (Class[]) null);
+                Class virtualMachine = Class.forName("com.sun.tools.attach.VirtualMachine", true, loader);
+                Class virtualMachineDescriptor = Class.forName("com.sun.tools.attach.VirtualMachineDescriptor", true, loader);
 
-                    List allVMs = (List) getVMList.invoke(null, (Object[]) null);
+                Method getVMList = virtualMachine.getMethod("list", (Class[]) null);
+                Method attachToVM = virtualMachine.getMethod("attach", String.class);
+                Method getAgentProperties = virtualMachine.getMethod("getAgentProperties", (Class[]) null);
+                Method loadAgent = virtualMachine.getMethod("loadAgent", String.class);
+                Method getVMDescriptor = virtualMachineDescriptor.getMethod("displayName", (Class[]) null);
+                Method getVMId = virtualMachineDescriptor.getMethod("id", (Class[]) null);
 
-                    for (Object vmInstance : allVMs) {
-                        String displayName = (String) getVMDescriptor.invoke(vmInstance, (Object[]) null);
-                        if (displayName.contains(PATTERN)) {
-                            String id = (String) getVMId.invoke(vmInstance, (Object[]) null);
+                List allVMs = (List) getVMList.invoke(null, (Object[]) null);
 
-                            Object vm = attachToVM.invoke(null, id);
+                for (Object vmInstance : allVMs) {
+                    String displayName = (String) getVMDescriptor.invoke(vmInstance, (Object[]) null);
+                    if (displayName.contains(PATTERN)) {
+                        String id = (String) getVMId.invoke(vmInstance, (Object[]) null);
 
-                            Properties agentProperties = (Properties) getAgentProperties.invoke(vm, (Object[]) null);
-                            String connectorAddress = agentProperties.getProperty(CONNECTOR_ADDRESS);
-                            if (connectorAddress == null) {
-                                String agent = javaHome + File.separator + "lib" + File.separator + "management-agent.jar";
-                                loadAgent.invoke(vm, agent);
-                                // re-check
-                                agentProperties = (Properties) getAgentProperties.invoke(vm, (Object[]) null);
-                                connectorAddress = agentProperties.getProperty(CONNECTOR_ADDRESS);
-                            }
+                        Object vm = attachToVM.invoke(null, id);
 
-                            if (connectorAddress != null) {
-                                jmxUrl = connectorAddress;
-                                connectingPid = Integer.parseInt(id);
-                                print("useJmxServiceUrl Found JMS Url: " + jmxUrl);
-                            } else {
-                                print(String.format("No %s property!?", CONNECTOR_ADDRESS));
-                            }
-                            break;
+                        Properties agentProperties = (Properties) getAgentProperties.invoke(vm, (Object[]) null);
+                        String connectorAddress = agentProperties.getProperty(CONNECTOR_ADDRESS);
+                        if (connectorAddress == null) {
+                            String agent = JarFinder.findJar(javaHome, "management-agent.jar").getPath();
+                            loadAgent.invoke(vm, agent);
+                            // re-check
+                            agentProperties = (Properties) getAgentProperties.invoke(vm, (Object[]) null);
+                            connectorAddress = agentProperties.getProperty(CONNECTOR_ADDRESS);
                         }
+
+                        if (connectorAddress != null) {
+                            jmxUrl = connectorAddress;
+                            connectingPid = Integer.parseInt(id);
+                            print("useJmxServiceUrl Found JMS Url: " + jmxUrl);
+                        } else {
+                            print(String.format("No %s property!?", CONNECTOR_ADDRESS));
+                        }
+                        break;
                     }
-                } catch (Exception ignore) {
                 }
+            } catch (Exception e) {
+                print("Error: " + e);
             }
 
             if (connectingPid != -1) {

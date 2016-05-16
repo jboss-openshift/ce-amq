@@ -21,7 +21,7 @@
  * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
  */
 
-package org.jboss.ce.amq.drain;
+package org.jboss.ce.amq.drain.jmx;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -31,6 +31,7 @@ import javax.management.AttributeList;
 import javax.management.ObjectInstance;
 import javax.management.ObjectName;
 
+import org.jboss.ce.amq.drain.Utils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -52,8 +53,19 @@ class RemoteJMX extends AbstractJMX implements JMX {
         return destinations("Queues");
     }
 
+    public String queueName(DestinationHandle handle) throws Exception {
+        return getAttribute(String.class, handle, "Name");
+    }
+
     public Collection<DestinationHandle> durableTopicSubscribers() throws Exception {
         return destinations("InactiveDurableTopicSubscribers");
+    }
+
+    public DTSTuple dtsTuple(DestinationHandle handle) throws Exception {
+        String clientId = getAttribute(String.class, handle, "ClientId");
+        String topic = getAttribute(String.class, handle, "DestinationName");
+        String subscriptionName = getAttribute(String.class, handle, "SubscriptionName");
+        return new DTSTuple(clientId, topic, subscriptionName);
     }
 
     public void disconnect(String clientId) throws Exception {

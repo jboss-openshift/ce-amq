@@ -21,11 +21,19 @@
  * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
  */
 
-package org.jboss.ce.amq.drain;
+package org.jboss.ce.amq.drain.jmx;
 
 /**
  * @author <a href="mailto:ales.justin@jboss.org">Ales Justin</a>
  */
-interface Function<T> {
-    T apply(JMX jmx, DestinationHandle handle) throws Exception;
+public class DTSTuple {
+    public final String clientId;
+    public final String topic;
+    public final String subscriptionName;
+
+    public DTSTuple(String clientId, String topic, String subscriptionName) {
+        this.clientId = clientId;
+        this.topic = topic;
+        this.subscriptionName = subscriptionName;
+    }
 }

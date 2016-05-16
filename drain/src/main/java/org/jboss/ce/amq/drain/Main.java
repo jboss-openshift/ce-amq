@@ -30,6 +30,10 @@ import java.util.Set;
 
 import javax.jms.Message;
 
+import org.jboss.ce.amq.drain.jms.Consumer;
+import org.jboss.ce.amq.drain.jms.Producer;
+import org.jboss.ce.amq.drain.jmx.DTSTuple;
+import org.jboss.ce.amq.drain.jmx.DestinationHandle;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -75,12 +79,11 @@ public class Main {
                 int counter;
 
                 // drain queues
-                Function<String> qFn = new QueueFunction();
                 Collection<DestinationHandle> queues = queueConsumer.getJMX().queues();
                 log.info("Found queues: {}", queues);
                 for (DestinationHandle handle : queues) {
                     counter = 0;
-                    String queue = qFn.apply(queueConsumer.getJMX(), handle);
+                    String queue = queueConsumer.getJMX().queueName(handle);
                     Producer.ProducerProcessor processor = queueProducer.processQueueMessages(queue);
                     Iterator<Message> iter = queueConsumer.consumeQueue(handle, queue);
                     while (iter.hasNext()) {
@@ -97,12 +100,11 @@ public class Main {
             int counter;
             // drain durable topic subscribers
             Set<String> ids = new HashSet<>();
-            Function<DTSFunction.Tuple> tFn = new DTSFunction();
             Collection<DestinationHandle> topics = dtsConsumer.getJMX().durableTopicSubscribers();
             log.info("Found durable topic subscribers: {}", topics);
             for (DestinationHandle handle : topics) {
                 counter = 0;
-                DTSFunction.Tuple tuple = tFn.apply(dtsConsumer.getJMX(), handle);
+                DTSTuple tuple = dtsConsumer.getJMX().dtsTuple(handle);
                 try (Producer dtsProducer = new Producer(getProducerURL(), producerUsername, producerPassword)) {
                     dtsProducer.start(tuple.clientId);
 

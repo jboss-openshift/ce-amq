@@ -21,7 +21,7 @@
  * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
  */
 
-package org.jboss.ce.amq.drain;
+package org.jboss.ce.amq.drain.jms;
 
 import javax.jms.Destination;
 import javax.jms.JMSException;

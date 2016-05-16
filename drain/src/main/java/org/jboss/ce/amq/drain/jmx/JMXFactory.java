@@ -21,35 +21,13 @@
  * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
  */
 
-package org.jboss.ce.amq.drain;
-
-import java.util.logging.Logger;
-
-import javax.management.ObjectInstance;
+package org.jboss.ce.amq.drain.jmx;
 
 /**
  * @author <a href="mailto:ales.justin@jboss.org">Ales Justin</a>
  */
-public class PokeJMX extends AbstractJMX {
-    private static final Logger log = Logger.getLogger(PokeJMX.class.getName());
-
-    public static void main(String[] args) throws Exception {
-        if (args == null || args.length == 0) {
-            System.out.println("Sleeping ...");
-            Thread.sleep(10 * 60 * 1000L);
-        } else {
-            PokeJMX jmx = new PokeJMX();
-            jmx.list(args);
-        }
-    }
-
-    private void list(String[] args) throws Exception {
-        for (ObjectInstance oi : queryMBeans(createJmxConnection(), args[0])) {
-            print(oi.getObjectName().getCanonicalName());
-        }
-    }
-
-    protected void print(String msg) {
-        log.info(msg);
+public class JMXFactory {
+    public static JMX createJMX() {
+        return new RemoteJMX();
     }
 }

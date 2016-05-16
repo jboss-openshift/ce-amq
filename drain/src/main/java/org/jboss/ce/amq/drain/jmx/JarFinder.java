@@ -21,13 +21,28 @@
  * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
  */
 
-package org.jboss.ce.amq.drain;
+package org.jboss.ce.amq.drain.jmx;
+
+import java.io.File;
 
 /**
  * @author <a href="mailto:ales.justin@jboss.org">Ales Justin</a>
  */
-class QueueFunction implements Function<String> {
-    public String apply(JMX jmx, DestinationHandle handle) throws Exception {
-        return jmx.getAttribute(String.class, handle, "Name");
+class JarFinder {
+    static File findJar(String javaHome, String jarName) {
+        // try Sun/Oracle path
+        String sunFile = javaHome + File.separator + ".." + File.separator + "lib" + File.separator + jarName;
+        File file = new File(sunFile);
+        if (file.exists()) {
+            return file;
+        }
+        // try OpenJDK path
+        String openjdkFile = javaHome + File.separator + "lib" + File.separator + jarName;
+        file = new File(openjdkFile);
+        if (file.exists()) {
+            return file;
+        }
+        // error
+        throw new IllegalStateException(String.format("Cannot find %s!", jarName));
     }
 }

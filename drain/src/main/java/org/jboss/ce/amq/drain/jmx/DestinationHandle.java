@@ -21,17 +21,26 @@
  * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
  */
 
-package org.jboss.ce.amq.drain;
+package org.jboss.ce.amq.drain.jmx;
 
-import java.util.Collection;
+import javax.management.ObjectName;
 
 /**
  * @author <a href="mailto:ales.justin@jboss.org">Ales Justin</a>
  */
-interface JMX {
-    Collection<DestinationHandle> queues() throws Exception;
-    Collection<DestinationHandle> durableTopicSubscribers() throws Exception;
-    void disconnect(String clientId) throws Exception;
-    boolean hasNextMessage(DestinationHandle handle, String attributeName) throws Exception;
-    <T> T getAttribute(Class<T> type, DestinationHandle handle, String attributeName) throws Exception;
+public class DestinationHandle {
+    private ObjectName objectName;
+
+    public DestinationHandle(ObjectName objectName) {
+        this.objectName = objectName;
+    }
+
+    public ObjectName getObjectName() {
+        return objectName;
+    }
+
+    @Override
+    public String toString() {
+        return getObjectName().getCanonicalName();
+    }
 }

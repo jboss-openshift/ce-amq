@@ -21,7 +21,7 @@
  * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
  */
 
-package org.jboss.ce.amq.drain;
+package org.jboss.ce.amq.drain.jms;
 
 import java.io.Closeable;
 import java.io.IOException;
@@ -41,6 +41,8 @@ import javax.jms.Topic;
 import javax.jms.TopicSubscriber;
 
 import org.apache.activemq.ActiveMQConnectionFactory;
+import org.jboss.ce.amq.drain.jmx.JMX;
+import org.jboss.ce.amq.drain.jmx.JMXFactory;
 
 /**
  * @author <a href="mailto:ales.justin@jboss.org">Ales Justin</a>
@@ -125,7 +127,7 @@ public abstract class Client implements Closeable {
         return jmx;
     }
 
-    protected TopicSubscriber getTopicSubscriber(String topicName, String subscriptionName) throws JMSException {
+    public TopicSubscriber getTopicSubscriber(String topicName, String subscriptionName) throws JMSException {
         final Topic topic = getSession().createTopic(topicName);
         return getSession().createDurableSubscriber(topic, subscriptionName);
     }

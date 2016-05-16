@@ -25,8 +25,8 @@ package org.jboss.test.ce.amq;
 
 import javax.jms.TextMessage;
 
-import org.jboss.ce.amq.drain.Producer;
 import org.jboss.ce.amq.drain.Utils;
+import org.jboss.ce.amq.drain.jms.Producer;
 import org.junit.Test;
 
 /**

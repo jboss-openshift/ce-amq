@@ -21,28 +21,23 @@
  * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
  */
 
-package org.jboss.ce.amq.drain;
+package org.jboss.ce.amq.drain.jmx;
+
+import java.util.Collection;
 
 /**
  * @author <a href="mailto:ales.justin@jboss.org">Ales Justin</a>
  */
-class DTSFunction implements Function<DTSFunction.Tuple> {
-    public Tuple apply(JMX jmx, DestinationHandle handle) throws Exception {
-        String clientId = jmx.getAttribute(String.class, handle, "ClientId");
-        String topic = jmx.getAttribute(String.class, handle, "DestinationName");
-        String subscriptionName = jmx.getAttribute(String.class, handle, "SubscriptionName");
-        return new Tuple(clientId, topic, subscriptionName);
-    }
+public interface JMX {
+    Collection<DestinationHandle> queues() throws Exception;
+    String queueName(DestinationHandle handle) throws Exception;
 
-    public static class Tuple {
-        public final String clientId;
-        public final String topic;
-        public final String subscriptionName;
+    Collection<DestinationHandle> durableTopicSubscribers() throws Exception;
+    DTSTuple dtsTuple(DestinationHandle handle) throws Exception;
 
-        public Tuple(String clientId, String topic, String subscriptionName) {
-            this.clientId = clientId;
-            this.topic = topic;
-            this.subscriptionName = subscriptionName;
-        }
-    }
+    void disconnect(String clientId) throws Exception;
+
+    boolean hasNextMessage(DestinationHandle handle, String attributeName) throws Exception;
+
+    <T> T getAttribute(Class<T> type, DestinationHandle handle, String attributeName) throws Exception;
 }

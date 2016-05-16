@@ -27,8 +27,8 @@ import javax.jms.Message;
 import javax.jms.MessageConsumer;
 import javax.jms.TopicSubscriber;
 
-import org.jboss.ce.amq.drain.Consumer;
 import org.jboss.ce.amq.drain.Utils;
+import org.jboss.ce.amq.drain.jms.Consumer;
 import org.junit.Test;
 
 /**
