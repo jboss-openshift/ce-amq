@@ -214,7 +214,8 @@ abstract class AbstractJMX {
                     }
                 }
             } catch (Exception e) {
-                print("Error: " + e);
+                print("Error: " + e.getMessage());
+                e.printStackTrace();
             }
 
             if (connectingPid != -1) {
