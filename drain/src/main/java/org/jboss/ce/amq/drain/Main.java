@@ -51,6 +51,8 @@ public class Main {
     private String producerUsername = Utils.getSystemPropertyOrEnvVar("producer.username", Utils.getSystemPropertyOrEnvVar("amq.user"));
     private String producerPassword = Utils.getSystemPropertyOrEnvVar("producer.password", Utils.getSystemPropertyOrEnvVar("amq.password"));
 
+    private String initialDelay = Utils.getSystemPropertyOrEnvVar("initial.delay", Utils.getSystemPropertyOrEnvVar("amq.delay", "5"));
+
     public static void main(String[] args) {
         try {
             Main main = new Main();
@@ -69,7 +71,14 @@ public class Main {
         return producerURL;
     }
 
+    protected void delay() throws Exception {
+        int ts = Integer.parseInt(initialDelay);
+        Thread.sleep(ts * 1000);
+    }
+
     public void run() throws Exception {
+        delay();
+
         try (Producer queueProducer = new Producer(getProducerURL(), producerUsername, producerPassword)) {
             queueProducer.start();
 
