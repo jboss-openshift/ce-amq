@@ -72,6 +72,7 @@ public class Main {
     }
 
     protected void delay() throws Exception {
+        log.info("Initial delay: %ssec ...", initialDelay);
         int ts = Integer.parseInt(initialDelay);
         Thread.sleep(ts * 1000);
     }
