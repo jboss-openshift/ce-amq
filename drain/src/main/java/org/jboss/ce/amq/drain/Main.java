@@ -78,7 +78,7 @@ public class Main {
     }
 
     public void run() throws Exception {
-        delay();
+        // delay(); // ignore delay -- should be part of readiness probe
 
         try (Producer queueProducer = new Producer(getProducerURL(), producerUsername, producerPassword)) {
             queueProducer.start();
