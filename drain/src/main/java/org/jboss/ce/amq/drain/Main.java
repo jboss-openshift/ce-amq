@@ -141,5 +141,7 @@ public class Main {
             }
             log.info("Consumed {} messages.", ids.size());
         }
+
+        log.info("-- [CE] A-MQ draining finished. --");
     }
 }

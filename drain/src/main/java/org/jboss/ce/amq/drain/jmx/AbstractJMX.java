@@ -183,7 +183,7 @@ abstract class AbstractJMX {
                 List allVMs = (List) getVMList.invoke(null, (Object[]) null);
                 print(String.format("Found %s VMs ...", allVMs.size()));
 
-                dumpEnv();
+                // dumpEnv();
 
                 for (Object vmInstance : allVMs) {
                     String displayName = (String) getVMDescriptor.invoke(vmInstance, (Object[]) null);
