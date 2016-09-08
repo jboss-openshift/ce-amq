@@ -91,7 +91,7 @@ abstract class AbstractJMX {
     // ActiveMQ impl details
 
     protected List<ObjectInstance> queryMBeans(MBeanServerConnection jmxConnection, String queryString) throws Exception {
-        return new MBeansObjectNameQueryFilter(this, jmxConnection).query(queryString);
+        return new MBeansObjectNameQueryFilter(jmxConnection).query(queryString);
     }
 
     protected abstract void print(String msg);
@@ -234,11 +234,9 @@ abstract class AbstractJMX {
         static final String DEFAULT_JMX_DOMAIN = Utils.getSystemPropertyOrEnvVar("jmx.domain", "org.apache.activemq");
         static final String QUERY_EXP_PREFIX = "MBeans.QueryExp.";
 
-        private AbstractJMX jmx;
         private MBeanServerConnection jmxConnection;
 
-        private MBeansObjectNameQueryFilter(AbstractJMX jmx, MBeanServerConnection jmxConnection) {
-            this.jmx = jmx;
+        private MBeansObjectNameQueryFilter(MBeanServerConnection jmxConnection) {
             this.jmxConnection = jmxConnection;
         }
 
@@ -282,7 +280,6 @@ abstract class AbstractJMX {
 
         private List<ObjectInstance> queryMBeans(ObjectName objName, String queryExpStr) throws IOException {
             QueryExp queryExp = createQueryExp(queryExpStr);
-            jmx.print(String.format("ObjectName=%s,QueryString=%s,QueryExp=%s", objName, queryExpStr, queryExp));
             // Convert mbeans set to list to make it standard throughout the query filter
             return new ArrayList<>(jmxConnection.queryMBeans(objName, queryExp));
         }
