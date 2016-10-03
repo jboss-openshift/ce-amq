@@ -23,9 +23,10 @@
 
 package org.jboss.ce.amq.drain.jmx;
 
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.Set;
+import java.util.TreeSet;
 
 import javax.management.AttributeList;
 import javax.management.ObjectInstance;
@@ -101,7 +102,7 @@ class RemoteJMX extends AbstractJMX implements JMX {
     private Collection<DestinationHandle> destinations(String type) throws Exception {
         String query = brokerQuery();
         List<ObjectInstance> mbeans = queryMBeans(createJmxConnection(), query);
-        List<DestinationHandle> destinations = new ArrayList<>();
+        Set<DestinationHandle> destinations = new TreeSet<>();
         for (ObjectInstance mbean : mbeans) {
             ObjectName objectName = mbean.getObjectName();
             ObjectName[] names = getAttribute(ObjectName[].class, objectName, type);

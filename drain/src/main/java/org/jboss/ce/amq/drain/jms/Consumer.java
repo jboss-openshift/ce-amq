@@ -54,6 +54,10 @@ public class Consumer extends Client {
         return getSession().createConsumer(createQueue(queueName));
     }
 
+    public int currentQueueSize(DestinationHandle handle) throws Exception {
+        return getJMX().getAttribute(Number.class, handle, "QueueSize").intValue();
+    }
+
     public Iterator<Message> consumeQueue(DestinationHandle handle, String queueName) throws JMSException {
         final Queue queue = createQueue(queueName);
         return consumeMessages(queue, handle, "QueueSize");
@@ -63,6 +67,10 @@ public class Consumer extends Client {
         int pendingQueueSize = getJMX().getAttribute(Number.class, handle, "PendingQueueSize").intValue();
         TopicSubscriber subscriber = getTopicSubscriber(topicName, subscriptionName);
         return consumeMessages(subscriber, new PendingQueueSizeChecker(pendingQueueSize));
+    }
+
+    public int currentTopicSubscriptionSize(DestinationHandle handle) throws Exception {
+        return getJMX().getAttribute(Number.class, handle, "PendingQueueSize").intValue();
     }
 
     private Iterator<Message> consumeMessages(Destination destination, final DestinationHandle handle, final String attributeName) throws JMSException {

@@ -21,30 +21,45 @@
  * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
  */
 
-package org.jboss.ce.amq.drain.jmx;
+package org.jboss.ce.amq.drain;
 
-import javax.management.ObjectName;
+import java.util.HashMap;
+import java.util.Map;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * @author <a href="mailto:ales.justin@jboss.org">Ales Justin</a>
  */
-public class DestinationHandle implements Comparable<DestinationHandle> {
-    private ObjectName objectName;
+class Counter implements Runnable {
+    private static final Logger log = LoggerFactory.getLogger(Counter.class);
 
-    public DestinationHandle(ObjectName objectName) {
-        this.objectName = objectName;
+    private Map<String, Integer> sizes = new HashMap<>();
+    private Map<String, Integer> counters = new HashMap<>();
+
+    void setSize(String destination, int size) {
+        sizes.put(destination, size);
     }
 
-    public ObjectName getObjectName() {
-        return objectName;
+    void increment(String destination) {
+        Integer x = counters.get(destination);
+        if (x == null) {
+            x = 0;
+        }
+        x++;
+        counters.put(destination, x);
     }
 
-    public int compareTo(DestinationHandle other) {
-        return getObjectName().compareTo(other.getObjectName());
-    }
-
-    @Override
-    public String toString() {
-        return getObjectName().getCanonicalName();
+    public void run() {
+        StringBuilder builder = new StringBuilder();
+        builder.append("A-MQ counter: \n");
+        for (Map.Entry<String, Integer> entry : counters.entrySet()) {
+            builder
+                .append(String.format("'%s'", entry.getKey()))
+                .append(" -> ").append(entry.getValue()).append(" / ").append(sizes.get(entry.getKey()))
+                .append("\n");
+        }
+        log.info(builder.toString());
     }
 }
