@@ -82,8 +82,8 @@ public class Main {
     }
 
     public void run() throws Exception {
-        final Counter counter = new Counter();
-        Runtime.getRuntime().addShutdownHook(new Thread(counter));
+        final Stats stats = new Stats();
+        Runtime.getRuntime().addShutdownHook(new Thread(stats));
 
         info();
 
@@ -104,14 +104,14 @@ public class Main {
                     msgsCounter = 0;
                     String queue = queueConsumer.getJMX().queueName(handle);
                     log.info("Processing queue: '{}'", queue);
-                    counter.setSize(queue, queueConsumer.currentQueueSize(handle));
+                    stats.setSize(queue, queueConsumer.currentQueueSize(handle));
                     Producer.ProducerProcessor processor = queueProducer.processQueueMessages(queue);
                     Iterator<Message> iter = queueConsumer.consumeQueue(handle, queue);
                     while (iter.hasNext()) {
                         Message next = iter.next();
                         processor.processMessage(next);
                         msgsCounter++;
-                        counter.increment(queue);
+                        stats.increment(queue);
                     }
                     log.info("Handled {} messages for queue '{}'.", msgsCounter, queue);
                 }
@@ -137,14 +137,14 @@ public class Main {
                     dtsConsumer.start(tuple.clientId);
                     try {
                         log.info("Processing topic subscriber : '{}' [{}]", tuple.topic, tuple.subscriptionName);
-                        counter.setSize(tuple.topic + "/" + tuple.subscriptionName, dtsConsumer.currentTopicSubscriptionSize(handle));
+                        stats.setSize(tuple.topic + "/" + tuple.subscriptionName, dtsConsumer.currentTopicSubscriptionSize(handle));
                         Iterator<Message> iter = dtsConsumer.consumeDurableTopicSubscriptions(handle, tuple.topic, tuple.subscriptionName);
                         while (iter.hasNext()) {
                             Message next = iter.next();
                             if (ids.add(next.getJMSMessageID())) {
                                 processor.processMessage(next);
                                 msgsCounter++;
-                                counter.increment(tuple.topic + "/" + tuple.subscriptionName);
+                                stats.increment(tuple.topic + "/" + tuple.subscriptionName);
                             }
                         }
                         log.info("Handled {} messages for topic subscriber '{}' [{}].", msgsCounter, tuple.topic, tuple.subscriptionName);

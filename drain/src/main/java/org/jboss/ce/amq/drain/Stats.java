@@ -32,8 +32,8 @@ import org.slf4j.LoggerFactory;
 /**
  * @author <a href="mailto:ales.justin@jboss.org">Ales Justin</a>
  */
-class Counter implements Runnable {
-    private static final Logger log = LoggerFactory.getLogger(Counter.class);
+class Stats implements Runnable {
+    private static final Logger log = LoggerFactory.getLogger(Stats.class);
 
     private Map<String, Integer> sizes = new HashMap<>();
     private Map<String, Integer> counters = new HashMap<>();
@@ -52,14 +52,9 @@ class Counter implements Runnable {
     }
 
     public void run() {
-        StringBuilder builder = new StringBuilder();
-        builder.append("A-MQ counter: \n");
+        log.info("A-MQ migration statistics ...");
         for (Map.Entry<String, Integer> entry : counters.entrySet()) {
-            builder
-                .append(String.format("'%s'", entry.getKey()))
-                .append(" -> ").append(entry.getValue()).append(" / ").append(sizes.get(entry.getKey()))
-                .append("\n");
+            log.info(String.format("Processing stats: '%s' -> %s / %s", entry.getKey(), entry.getValue(), sizes.get(entry.getKey())));
         }
-        log.info(builder.toString());
     }
 }
