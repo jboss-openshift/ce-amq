@@ -23,8 +23,9 @@
 
 package org.jboss.ce.amq.drain;
 
-import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -32,28 +33,28 @@ import org.slf4j.LoggerFactory;
 /**
  * @author <a href="mailto:ales.justin@jboss.org">Ales Justin</a>
  */
-class Stats implements Runnable {
+class Stats {
     private static final Logger log = LoggerFactory.getLogger(Stats.class);
 
-    private Map<String, Integer> sizes = new HashMap<>();
-    private Map<String, Integer> counters = new HashMap<>();
+    private Map<String, Integer> sizes = new ConcurrentHashMap<>();
+    private Map<String, AtomicInteger> counters = new ConcurrentHashMap<>();
 
     void setSize(String destination, int size) {
         sizes.put(destination, size);
     }
 
     void increment(String destination) {
-        Integer x = counters.get(destination);
+        AtomicInteger x = counters.get(destination);
         if (x == null) {
-            x = 0;
+            x = new AtomicInteger(0);
+            counters.put(destination, x);
         }
-        x++;
-        counters.put(destination, x);
+        x.incrementAndGet();
     }
 
-    public void run() {
+    public void dumpStats() {
         log.info("A-MQ migration statistics ...");
-        for (Map.Entry<String, Integer> entry : counters.entrySet()) {
+        for (Map.Entry<String, AtomicInteger> entry : counters.entrySet()) {
             log.info(String.format("Processing stats: '%s' -> %s / %s", entry.getKey(), entry.getValue(), sizes.get(entry.getKey())));
         }
     }

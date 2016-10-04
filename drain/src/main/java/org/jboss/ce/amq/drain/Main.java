@@ -27,6 +27,8 @@ import java.util.Collection;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Set;
+import java.util.concurrent.Semaphore;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import javax.jms.Message;
 
@@ -51,8 +53,6 @@ public class Main {
     private String producerUsername = Utils.getSystemPropertyOrEnvVar("producer.username", Utils.getSystemPropertyOrEnvVar("amq.user"));
     private String producerPassword = Utils.getSystemPropertyOrEnvVar("producer.password", Utils.getSystemPropertyOrEnvVar("amq.password"));
 
-    private String initialDelay = Utils.getSystemPropertyOrEnvVar("initial.delay", Utils.getSystemPropertyOrEnvVar("amq.delay", "5"));
-
     public static void main(String[] args) {
         try {
             Main main = new Main();
@@ -75,88 +75,107 @@ public class Main {
         log.info("Running A-MQ migration ...");
     }
 
-    protected void delay() throws Exception {
-        log.info("Initial delay: {}sec ...", initialDelay);
-        int ts = Integer.parseInt(initialDelay);
-        Thread.sleep(ts * 1000);
-    }
-
     public void run() throws Exception {
+        final AtomicBoolean terminating = new AtomicBoolean();
+        final Semaphore statsSemaphore = new Semaphore(0);
+
         final Stats stats = new Stats();
-        Runtime.getRuntime().addShutdownHook(new Thread(stats));
-
-        info();
-
-        // delay(); // ignore delay -- should be part of readiness probe
-
-        try (Producer queueProducer = new Producer(getProducerURL(), producerUsername, producerPassword)) {
-            queueProducer.start();
-
-            try (Consumer queueConsumer = new Consumer(consumerURL, consumerUsername, consumerPassword)) {
-                queueConsumer.start();
-
-                int msgsCounter;
-
-                // drain queues
-                Collection<DestinationHandle> queues = queueConsumer.getJMX().queues();
-                log.info("Found queues: {}", queues);
-                for (DestinationHandle handle : queues) {
-                    msgsCounter = 0;
-                    String queue = queueConsumer.getJMX().queueName(handle);
-                    log.info("Processing queue: '{}'", queue);
-                    stats.setSize(queue, queueConsumer.currentQueueSize(handle));
-                    Producer.ProducerProcessor processor = queueProducer.processQueueMessages(queue);
-                    Iterator<Message> iter = queueConsumer.consumeQueue(handle, queue);
-                    while (iter.hasNext()) {
-                        Message next = iter.next();
-                        processor.processMessage(next);
-                        msgsCounter++;
-                        stats.increment(queue);
-                    }
-                    log.info("Handled {} messages for queue '{}'.", msgsCounter, queue);
-                }
-            }
-        }
-
-        try (Consumer dtsConsumer = new Consumer(consumerURL, consumerUsername, consumerPassword)) {
-            int msgsCounter;
-            // drain durable topic subscribers
-            Set<String> ids = new HashSet<>();
-            Collection<DestinationHandle> topics = dtsConsumer.getJMX().durableTopicSubscribers();
-            log.info("Found durable topic subscribers: {}", topics);
-            for (DestinationHandle handle : topics) {
-                msgsCounter = 0;
-                DTSTuple tuple = dtsConsumer.getJMX().dtsTuple(handle);
-                try (Producer dtsProducer = new Producer(getProducerURL(), producerUsername, producerPassword)) {
-                    dtsProducer.start(tuple.clientId);
-
-                    dtsProducer.getTopicSubscriber(tuple.topic, tuple.subscriptionName).close(); // just create dts on producer-side
-
-                    Producer.ProducerProcessor processor = dtsProducer.processTopicMessages(tuple.topic);
-                    dtsConsumer.getJMX().disconnect(tuple.clientId);
-                    dtsConsumer.start(tuple.clientId);
+        try {
+            Runtime.getRuntime().addShutdownHook(new Thread(new Runnable() {
+                public void run() {
+                    terminating.set(true);
                     try {
-                        log.info("Processing topic subscriber : '{}' [{}]", tuple.topic, tuple.subscriptionName);
-                        stats.setSize(tuple.topic + "/" + tuple.subscriptionName, dtsConsumer.currentTopicSubscriptionSize(handle));
-                        Iterator<Message> iter = dtsConsumer.consumeDurableTopicSubscriptions(handle, tuple.topic, tuple.subscriptionName);
-                        while (iter.hasNext()) {
-                            Message next = iter.next();
-                            if (ids.add(next.getJMSMessageID())) {
+                        statsSemaphore.acquire();
+                    } catch (InterruptedException e) {} // ignore as we are terminating
+                    stats.dumpStats();
+                }
+            }));
+
+            info();
+
+            if (!terminating.get()) {
+                try (Producer queueProducer = new Producer(getProducerURL(), producerUsername, producerPassword)) {
+                    queueProducer.start();
+
+                    try (Consumer queueConsumer = new Consumer(consumerURL, consumerUsername, consumerPassword)) {
+                        queueConsumer.start();
+
+                        int msgsCounter;
+
+                        // drain queues
+                        Collection<DestinationHandle> queues = queueConsumer.getJMX().queues();
+                        log.info("Found queues: {}", queues);
+                        for (DestinationHandle handle : queues) {
+                            if (terminating.get()) {
+                                break ;
+                            }
+                            msgsCounter = 0;
+                            String queue = queueConsumer.getJMX().queueName(handle);
+                            log.info("Processing queue: '{}'", queue);
+                            stats.setSize(queue, queueConsumer.currentQueueSize(handle));
+                            Producer.ProducerProcessor processor = queueProducer.processQueueMessages(queue);
+                            Iterator<Message> iter = queueConsumer.consumeQueue(handle, queue);
+                            while (iter.hasNext() && !terminating.get()) {
+                                Message next = iter.next();
                                 processor.processMessage(next);
                                 msgsCounter++;
-                                stats.increment(tuple.topic + "/" + tuple.subscriptionName);
+                                stats.increment(queue);
                             }
+                            log.info("Handled {} messages for queue '{}'.", msgsCounter, queue);
                         }
-                        log.info("Handled {} messages for topic subscriber '{}' [{}].", msgsCounter, tuple.topic, tuple.subscriptionName);
-                    } finally {
-                        //noinspection ThrowFromFinallyBlock
-                        dtsConsumer.stop();
                     }
                 }
             }
-            log.info("Consumed {} messages.", ids.size());
-        }
 
-        log.info("-- [CE] A-MQ migration finished. --");
+            if (!terminating.get()) {
+                try (Consumer dtsConsumer = new Consumer(consumerURL, consumerUsername, consumerPassword)) {
+                    int msgsCounter;
+                    // drain durable topic subscribers
+                    Set<String> ids = new HashSet<>();
+                    Collection<DestinationHandle> topics = dtsConsumer.getJMX().durableTopicSubscribers();
+                    log.info("Found durable topic subscribers: {}", topics);
+                    for (DestinationHandle handle : topics) {
+                        if (terminating.get()) {
+                            break ;
+                        }
+                        msgsCounter = 0;
+                        DTSTuple tuple = dtsConsumer.getJMX().dtsTuple(handle);
+                        try (Producer dtsProducer = new Producer(getProducerURL(), producerUsername, producerPassword)) {
+                            dtsProducer.start(tuple.clientId);
+
+                            dtsProducer.getTopicSubscriber(tuple.topic, tuple.subscriptionName).close(); // just create dts on producer-side
+
+                            Producer.ProducerProcessor processor = dtsProducer.processTopicMessages(tuple.topic);
+                            dtsConsumer.getJMX().disconnect(tuple.clientId);
+                            dtsConsumer.start(tuple.clientId);
+                            try {
+                                log.info("Processing topic subscriber : '{}' [{}]", tuple.topic, tuple.subscriptionName);
+                                stats.setSize(tuple.topic + "/" + tuple.subscriptionName, dtsConsumer.currentTopicSubscriptionSize(handle));
+                                Iterator<Message> iter = dtsConsumer.consumeDurableTopicSubscriptions(handle, tuple.topic, tuple.subscriptionName);
+                                while (iter.hasNext() && !terminating.get()) {
+                                    Message next = iter.next();
+                                    if (ids.add(next.getJMSMessageID())) {
+                                        processor.processMessage(next);
+                                        msgsCounter++;
+                                        stats.increment(tuple.topic + "/" + tuple.subscriptionName);
+                                    }
+                                }
+                                log.info("Handled {} messages for topic subscriber '{}' [{}].", msgsCounter, tuple.topic, tuple.subscriptionName);
+                            } finally {
+                                //noinspection ThrowFromFinallyBlock
+                                dtsConsumer.stop();
+                            }
+                        }
+                    }
+                    log.info("Consumed {} messages.", ids.size());
+                }
+            }
+
+            if (!terminating.get()) {
+                log.info("-- [CE] A-MQ migration finished. --");
+            }
+        } finally {
+            statsSemaphore.release();
+        }
     }
 }
