@@ -53,9 +53,9 @@ class Stats {
     }
 
     public void dumpStats() {
-        log.info("A-MQ migration statistics ...");
+        log.info("A-MQ migration statistics ... ('destination' -> [processed / all])");
         for (Map.Entry<String, AtomicInteger> entry : counters.entrySet()) {
-            log.info(String.format("Processing stats: '%s' -> %s / %s", entry.getKey(), entry.getValue(), sizes.get(entry.getKey())));
+            log.info(String.format("Processing stats: '%s' -> [%s / %s]", entry.getKey(), entry.getValue(), sizes.get(entry.getKey())));
         }
     }
 }
