@@ -23,6 +23,7 @@
 
 package org.jboss.ce.amq.drain;
 
+import java.net.URL;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -56,6 +57,7 @@ public class Main {
     public static void main(String[] args) {
         try {
             Main main = new Main();
+            main.validate();
             main.run();
         } catch (Exception e) {
             log.error("Error draining broker: " + e.getMessage(), e);
@@ -63,16 +65,47 @@ public class Main {
         }
     }
 
+    protected void validate() throws Exception {
+        if (consumerUsername == null) {
+            throw new IllegalArgumentException("Missing consumer username!");
+        }
+        if (consumerPassword == null) {
+            throw new IllegalArgumentException("Missing consumer password!");
+        }
+        if (producerUsername == null) {
+            throw new IllegalArgumentException("Missing producer username!");
+        }
+        if (producerPassword == null) {
+            throw new IllegalArgumentException("Missing producer password!");
+        }
+        if (producerURL == null && getProducerURLRaw() == null) {
+            throw new IllegalArgumentException("Missing producer url!");
+        }
+    }
+
     protected String getProducerURL() {
         if (producerURL == null) {
-            String appName = Utils.getSystemPropertyOrEnvVar("application.name");
-            producerURL = "tcp://" + Utils.getSystemPropertyOrEnvVar(appName + ".amq.tcp.service.host") + ":61616";
+            producerURL = "tcp://" + getProducerURLRaw() + ":61616";
         }
         return producerURL;
     }
 
+    private String getProducerURLRaw() {
+        String appName = Utils.getSystemPropertyOrEnvVar("application.name");
+        String url = Utils.getSystemPropertyOrEnvVar(appName + ".amq.tcp.service.host");
+        if (url == null) {
+            url = Utils.getSystemPropertyOrEnvVar("amq.service.name");
+        }
+        return url;
+    }
+
     protected void info() {
         log.info("Running A-MQ migration ...");
+    }
+
+    protected void check() throws Exception {
+        new URL(getProducerURL()).openConnection().connect();
+        log.info("A-MQ service checked ...");
     }
 
     public void run() throws Exception {
@@ -86,12 +119,16 @@ public class Main {
                     terminating.set(true);
                     try {
                         statsSemaphore.acquire();
-                    } catch (InterruptedException e) {} // ignore as we are terminating
+                    } catch (InterruptedException ignored) {
+                        // ignore as we are terminating
+                    }
                     stats.dumpStats();
                 }
             }));
 
             info();
+
+            check();
 
             if (!terminating.get()) {
                 try (Producer queueProducer = new Producer(getProducerURL(), producerUsername, producerPassword)) {
@@ -107,7 +144,7 @@ public class Main {
                         log.info("Found queues: {}", queues);
                         for (DestinationHandle handle : queues) {
                             if (terminating.get()) {
-                                break ;
+                                break;
                             }
                             msgsCounter = 0;
                             String queue = queueConsumer.getJMX().queueName(handle);
@@ -136,7 +173,7 @@ public class Main {
                     log.info("Found durable topic subscribers: {}", subscribers);
                     for (DestinationHandle handle : subscribers) {
                         if (terminating.get()) {
-                            break ;
+                            break;
                         }
                         msgsCounter = 0;
                         DTSTuple tuple = dtsConsumer.getJMX().dtsTuple(handle);
@@ -163,7 +200,7 @@ public class Main {
                                 log.info("Handled {} messages for topic subscriber '{}' [{}].", msgsCounter, tuple.topic, tuple.subscriptionName);
                             } finally {
                                 //noinspection ThrowFromFinallyBlock
-                                dtsConsumer.stop();
+                                dtsConsumer.close();
                             }
                         }
                     }
