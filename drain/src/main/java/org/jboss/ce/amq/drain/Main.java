@@ -132,9 +132,9 @@ public class Main {
                     int msgsCounter;
                     // drain durable topic subscribers
                     Set<String> ids = new HashSet<>();
-                    Collection<DestinationHandle> topics = dtsConsumer.getJMX().durableTopicSubscribers();
-                    log.info("Found durable topic subscribers: {}", topics);
-                    for (DestinationHandle handle : topics) {
+                    Collection<DestinationHandle> subscribers = dtsConsumer.getJMX().durableTopicSubscribers();
+                    log.info("Found durable topic subscribers: {}", subscribers);
+                    for (DestinationHandle handle : subscribers) {
                         if (terminating.get()) {
                             break ;
                         }
