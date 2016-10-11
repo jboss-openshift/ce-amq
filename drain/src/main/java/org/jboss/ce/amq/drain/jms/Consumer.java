@@ -33,17 +33,29 @@ import javax.jms.Queue;
 import javax.jms.TopicSubscriber;
 
 import org.jboss.ce.amq.drain.jmx.DestinationHandle;
+import org.jboss.ce.amq.drain.jmx.JMX;
+import org.jboss.ce.amq.drain.jmx.JMXFactory;
 
 /**
  * @author <a href="mailto:ales.justin@jboss.org">Ales Justin</a>
  */
 public class Consumer extends Client {
+
+    private JMX jmx;
+
     public Consumer(String url, String username, String password) {
         this(url, username, password, null);
     }
 
     public Consumer(String url, String username, String password, String clientId) {
         super(url, username, password, clientId);
+    }
+
+    public JMX getJMX() {
+        if (jmx == null) {
+            jmx = JMXFactory.createJMX();
+        }
+        return jmx;
     }
 
     private Queue createQueue(String queueName) throws JMSException {

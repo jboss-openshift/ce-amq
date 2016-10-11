@@ -41,8 +41,6 @@ import javax.jms.Topic;
 import javax.jms.TopicSubscriber;
 
 import org.apache.activemq.ActiveMQConnectionFactory;
-import org.jboss.ce.amq.drain.jmx.JMX;
-import org.jboss.ce.amq.drain.jmx.JMXFactory;
 
 /**
  * @author <a href="mailto:ales.justin@jboss.org">Ales Justin</a>
@@ -56,8 +54,6 @@ public abstract class Client implements Closeable {
 
     private Connection connection;
     private Session session;
-
-    private JMX jmx;
 
     public Client(String url, String username, String password) {
         this(url, username, password, null);
@@ -118,13 +114,6 @@ public abstract class Client implements Closeable {
             throw new IllegalStateException("No start invoked?");
         }
         connection.stop();
-    }
-
-    public JMX getJMX() {
-        if (jmx == null) {
-            jmx = JMXFactory.createJMX();
-        }
-        return jmx;
     }
 
     public TopicSubscriber getTopicSubscriber(String topicName, String subscriptionName) throws JMSException {
