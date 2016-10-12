@@ -23,7 +23,6 @@
 
 package org.jboss.ce.amq.drain;
 
-import java.net.URL;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -66,18 +65,6 @@ public class Main {
     }
 
     protected void validate() throws Exception {
-        if (consumerUsername == null) {
-            throw new IllegalArgumentException("Missing consumer username!");
-        }
-        if (consumerPassword == null) {
-            throw new IllegalArgumentException("Missing consumer password!");
-        }
-        if (producerUsername == null) {
-            throw new IllegalArgumentException("Missing producer username!");
-        }
-        if (producerPassword == null) {
-            throw new IllegalArgumentException("Missing producer password!");
-        }
         if (producerURL == null && getProducerURLRaw() == null) {
             throw new IllegalArgumentException("Missing producer url!");
         }
@@ -103,12 +90,25 @@ public class Main {
         log.info("Running A-MQ migration ...");
     }
 
-    protected void check() throws Exception {
-        new URL(getProducerURL()).openConnection().connect();
-        log.info("A-MQ service checked ...");
+    protected boolean check() {
+        try (Producer producer = new Producer(getProducerURL(), producerUsername, producerPassword)) {
+            producer.start();
+            producer.stop();
+            log.info("A-MQ service accessible ...");
+            return true;
+        } catch (Exception e) {
+            log.info(String.format("Cannot connect to A-MQ service [%s]: %s", getProducerURL(), e));
+            return false;
+        }
     }
 
     public void run() throws Exception {
+        info();
+
+        if (!check()) {
+            return;
+        }
+
         final AtomicBoolean terminating = new AtomicBoolean();
         final Semaphore statsSemaphore = new Semaphore(0);
 
@@ -125,10 +125,6 @@ public class Main {
                     stats.dumpStats();
                 }
             }));
-
-            info();
-
-            check();
 
             if (!terminating.get()) {
                 try (Producer queueProducer = new Producer(getProducerURL(), producerUsername, producerPassword)) {

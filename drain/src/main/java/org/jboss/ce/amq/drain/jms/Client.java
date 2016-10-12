@@ -50,6 +50,9 @@ public abstract class Client implements Closeable {
     private String username;
     private String password;
 
+    private boolean transacted = false;
+    private int mode = Session.AUTO_ACKNOWLEDGE;
+
     private String clientId;
 
     private Connection connection;
@@ -64,6 +67,14 @@ public abstract class Client implements Closeable {
         this.username = username;
         this.password = password;
         this.clientId = clientId;
+    }
+
+    public void setTransacted(boolean transacted) {
+        this.transacted = transacted;
+    }
+
+    public void setMode(int mode) {
+        this.mode = mode;
     }
 
     protected Session getSession() {
@@ -103,9 +114,9 @@ public abstract class Client implements Closeable {
 
     public void start() throws JMSException {
         ConnectionFactory cf = getConnectionFactory();
-        connection = cf.createConnection(username, password);
+        connection = (username != null && password != null) ? cf.createConnection(username, password) : cf.createConnection();
         init(connection);
-        session = connection.createSession(false, Session.AUTO_ACKNOWLEDGE);
+        session = connection.createSession(transacted, mode);
         connection.start();
     }
 
