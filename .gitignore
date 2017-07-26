@@ -3,3 +3,6 @@
 *.ipr
 *.iws
 drain/target/
+.classpath
+.project
+.settings

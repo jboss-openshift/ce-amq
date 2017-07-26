@@ -32,7 +32,7 @@
 
     <groupId>org.jboss.ce</groupId>
     <artifactId>ce-amq-parent</artifactId>
-    <version>1.0.0.Alpha1</version>
+    <version>1.0.0.Final</version>
     <packaging>pom</packaging>
 
     <name>CE AMQ - Parent</name>
@@ -48,9 +48,7 @@
 
     <properties>
         <version.org.apache.activemq>5.11.0</version.org.apache.activemq>
-        <version.log4j-slf4j>1.7.5</version.log4j-slf4j>
         <version.log4j>1.2.17</version.log4j>
-        <version.junit>4.11</version.junit>
     </properties>
 
     <modules>
@@ -59,17 +57,16 @@
 
     <dependencyManagement>
         <dependencies>
-
             <dependency>
                 <groupId>org.apache.activemq</groupId>
-                <artifactId>activemq-client</artifactId>
+                <artifactId>activemq-broker</artifactId>
                 <version>${version.org.apache.activemq}</version>
             </dependency>
 
             <dependency>
-                <groupId>org.slf4j</groupId>
-                <artifactId>slf4j-log4j12</artifactId>
-                <version>${version.log4j-slf4j}</version>
+                <groupId>org.apache.activemq</groupId>
+                <artifactId>activemq-kahadb-store</artifactId>
+                <version>${version.org.apache.activemq}</version>
             </dependency>
 
             <dependency>
@@ -77,14 +74,6 @@
                 <artifactId>log4j</artifactId>
                 <version>${version.log4j}</version>
             </dependency>
-
-            <dependency>
-                <groupId>junit</groupId>
-                <artifactId>junit</artifactId>
-                <version>${version.junit}</version>
-                <scope>test</scope>
-            </dependency>
-
         </dependencies>
     </dependencyManagement>
 

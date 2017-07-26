@@ -27,22 +27,18 @@ package org.jboss.ce.amq.drain;
  * @author <a href="mailto:ales.justin@jboss.org">Ales Justin</a>
  */
 public class Utils {
-    private static String checkForNone(String value) {
-        return "__none".equalsIgnoreCase(value) ? null : value;
-    }
-
     private static String getSystemPropertyOrEnvVar(String systemPropertyName, String envVarName, String defaultValue) {
         String answer = System.getProperty(systemPropertyName);
         if (answer != null) {
-            return checkForNone(answer);
+            return answer;
         }
 
         answer = System.getenv(envVarName);
         if (answer != null) {
-            return checkForNone(answer);
+            return answer;
         }
 
-        return checkForNone(defaultValue);
+        return defaultValue;
     }
 
     private static String convertSystemPropertyNameToEnvVar(String systemPropertyName) {

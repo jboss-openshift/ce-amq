@@ -5,7 +5,7 @@
     <parent>
         <groupId>org.jboss.ce</groupId>
         <artifactId>ce-amq-parent</artifactId>
-        <version>1.0.0.Alpha1</version>
+        <version>1.0.0.Final</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
 
@@ -14,6 +14,14 @@
 
     <name>CE AMQ - Drain</name>
     <description>Pre-stop drain hook.</description>
+
+    <licenses>
+        <license>
+            <name>Apache License Version 2.0</name>
+            <url>https://repository.jboss.org/licenses/apache-2.0.txt</url>
+            <distribution>repo</distribution>
+        </license>
+    </licenses>
 
     <build>
         <plugins>
@@ -32,41 +40,19 @@
     </build>
 
     <dependencies>
-
         <dependency>
             <groupId>org.apache.activemq</groupId>
-            <artifactId>activemq-client</artifactId>
+            <artifactId>activemq-broker</artifactId>
         </dependency>
 
         <dependency>
-            <groupId>org.slf4j</groupId>
-            <artifactId>slf4j-log4j12</artifactId>
+            <groupId>org.apache.activemq</groupId>
+            <artifactId>activemq-kahadb-store</artifactId>
         </dependency>
 
         <dependency>
             <groupId>log4j</groupId>
             <artifactId>log4j</artifactId>
         </dependency>
-
-        <dependency>
-            <groupId>junit</groupId>
-            <artifactId>junit</artifactId>
-        </dependency>
-
     </dependencies>
-
-    <profiles>
-
-        <profile>
-            <id>default</id>
-            <activation>
-                <activeByDefault>true</activeByDefault>
-            </activation>
-            <properties>
-                <skipTests>true</skipTests>
-            </properties>
-        </profile>
-
-    </profiles>
-
 </project>
