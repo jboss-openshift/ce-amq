@@ -24,10 +24,13 @@
 package org.jboss.ce.amq.drain;
 
 import java.io.File;
+import java.io.FileFilter;
 import java.util.Arrays;
+import java.util.LinkedList;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.activemq.broker.BrokerService;
+import org.apache.activemq.broker.region.RegionBroker;
 import org.apache.activemq.broker.region.policy.PolicyEntry;
 import org.apache.activemq.broker.region.policy.PolicyMap;
 import org.apache.activemq.command.ActiveMQDestination;
@@ -78,10 +81,6 @@ public class BrokerServiceDrainer {
         broker.setDataDirectory(dataDir);
         log.info(String.format("Data directory %s.", dataDir));
 
-        final PersistenceAdapter adaptor = new KahaDBPersistenceAdapter();
-        adaptor.setDirectory(new File(dataDir + "/kahadb"));
-        broker.setPersistenceAdapter(adaptor);
-
         PolicyMap policyMap = new PolicyMap();
         PolicyEntry defaultEntry = new PolicyEntry();
         defaultEntry.setExpireMessagesPeriod(0);
@@ -106,22 +105,47 @@ public class BrokerServiceDrainer {
         drainingNetworkConnector.setMessageTTL(-1);
         drainingNetworkConnector.setConsumerTTL(1);
         drainingNetworkConnector.setStaticBridge(true);
-        drainingNetworkConnector.setStaticallyIncludedDestinations(Arrays.asList(new ActiveMQDestination[]{new ActiveMQQueue(">"), new ActiveMQQueue("*")}));
+        drainingNetworkConnector.setStaticallyIncludedDestinations(Arrays.asList(new ActiveMQDestination[]{new ActiveMQQueue(">")}));
 
-        log.info("Starting broker.");
-        broker.start();
-        broker.waitUntilStarted();
-        log.info("Started broker.");
+        for (File kahaDbDir : findKahaDbInstances(new File(dataDir, "kahadb"))) {
 
-        long msgs;
-        while ((msgs = broker.getAdminView().getTotalMessageCount()) > 0) {
-            log.info(String.format("Still %s msgs left to migrate ...", msgs));
-            TimeUnit.SECONDS.sleep(5);
+            final PersistenceAdapter adaptor = new KahaDBPersistenceAdapter();
+            ((KahaDBPersistenceAdapter) adaptor).setConcurrentStoreAndDispatchQueues(false);
+            adaptor.setDirectory(kahaDbDir);
+            broker.setPersistenceAdapter(adaptor);
+
+            log.info("Starting broker with data directory " + kahaDbDir);
+            broker.start(true);
+            broker.waitUntilStarted();
+            log.info("Started broker.");
+
+            long msgs;
+            while ((msgs = ((RegionBroker)broker.getRegionBroker()).getDestinationStatistics().getMessages().getCount()) > 0) {
+                log.info(String.format("Still %s msgs left to migrate ...", msgs));
+                TimeUnit.SECONDS.sleep(5);
+            }
+
+            broker.stop();
+            broker.waitUntilStopped();
         }
-
-        broker.stop();
-
         log.info("-- [CE] A-MQ migration finished. --");
+    }
+
+    private static Iterable<? extends File> findKahaDbInstances(File root) {
+        LinkedList<File> dirs = new LinkedList<File>();
+        FileFilter destinationNames = new FileFilter() {
+            public boolean accept(File file) {
+                return file.getName().startsWith("queue#") || file.getName().startsWith("#210");
+            }
+        };
+        File[] candidates = root.listFiles(destinationNames);
+        if (candidates == null || candidates.length == 0) {
+            // single instance kahaDb
+            dirs.add(root);
+        } else for (File mKahaDBDir : candidates) {
+            dirs.add(mKahaDBDir);
+        }
+        return dirs;
     }
 
     public static String getApplicationName() {
@@ -129,7 +153,7 @@ public class BrokerServiceDrainer {
     }
 
     public static String getBrokerName() {
-        return Utils.getSystemPropertyOrEnvVar("broker.name", Utils.getSystemPropertyOrEnvVar("hostname", "localhost"));
+        return Utils.getSystemPropertyOrEnvVar("broker.name", Utils.getSystemPropertyOrEnvVar("hostname", "drainer"));
     }
 
     public static String getPassword() {
