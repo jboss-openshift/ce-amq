@@ -5,7 +5,7 @@
     <parent>
         <groupId>org.jboss.ce</groupId>
         <artifactId>ce-amq-parent</artifactId>
-        <version>1.0.0.Final</version>
+        <version>1.0.1.Final</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
 
