@@ -32,7 +32,7 @@
 
     <groupId>org.jboss.ce</groupId>
     <artifactId>ce-amq-parent</artifactId>
-    <version>1.0.0.Final</version>
+    <version>1.0.1.Final</version>
     <packaging>pom</packaging>
 
     <name>CE AMQ - Parent</name>
@@ -77,5 +77,13 @@
             </dependency>
         </dependencies>
     </dependencyManagement>
+
+    <repositories>
+        <repository>
+            <id>brewroot</id>
+            <name>Brew Repository</name>
+            <url>http://download.eng.bos.redhat.com/brewroot/repos/jb-fuse-6.2-build/latest/maven</url>
+        </repository>
+    </repositories>
 
 </project>
