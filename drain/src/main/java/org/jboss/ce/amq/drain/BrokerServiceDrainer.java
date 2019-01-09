@@ -33,6 +33,7 @@ import org.apache.activemq.broker.BrokerService;
 import org.apache.activemq.broker.region.RegionBroker;
 import org.apache.activemq.broker.region.policy.PolicyEntry;
 import org.apache.activemq.broker.region.policy.PolicyMap;
+import org.apache.activemq.broker.region.policy.SharedDeadLetterStrategy;
 import org.apache.activemq.command.ActiveMQDestination;
 import org.apache.activemq.command.ActiveMQQueue;
 import org.apache.activemq.network.ConditionalNetworkBridgeFilterFactory;
@@ -51,6 +52,8 @@ public class BrokerServiceDrainer {
     private static final String ACTIVEMQ_DATA = "activemq.data" ;
 
     private static final String MESH_URL_FORMAT = "kube://%s:61616/?queryInterval=%s";
+
+    public static final String AMQ_DRAINER_DLQ_PROCESS_EXPIRED = "amq.drainer.dlq.process.expired";
 
     public static void main(final String[] args) throws Exception {
         final String dataDir;
@@ -84,6 +87,10 @@ public class BrokerServiceDrainer {
         PolicyMap policyMap = new PolicyMap();
         PolicyEntry defaultEntry = new PolicyEntry();
         defaultEntry.setExpireMessagesPeriod(0);
+        String dlqProcessExpired = Utils.getSystemPropertyOrEnvVar(AMQ_DRAINER_DLQ_PROCESS_EXPIRED);
+        if (dlqProcessExpired != null) {
+           defaultEntry.getDeadLetterStrategy().setProcessExpired(Boolean.parseBoolean(dlqProcessExpired));
+        }
         ConditionalNetworkBridgeFilterFactory filterFactory = new ConditionalNetworkBridgeFilterFactory();
         filterFactory.setReplayWhenNoConsumers(true);
         defaultEntry.setNetworkBridgeFilterFactory(filterFactory);

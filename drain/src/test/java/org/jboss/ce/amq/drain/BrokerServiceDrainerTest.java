@@ -28,6 +28,7 @@ import java.io.File;
 import java.io.IOException;
 import java.net.URI;
 import java.util.ArrayList;
+import java.util.concurrent.TimeUnit;
 
 import org.apache.activemq.broker.BrokerRegistry;
 import org.apache.activemq.broker.BrokerService;
@@ -57,6 +58,7 @@ import org.junit.rules.TemporaryFolder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import static org.jboss.ce.amq.drain.BrokerServiceDrainer.AMQ_DRAINER_DLQ_PROCESS_EXPIRED;
 import static org.junit.Assert.assertEquals;
 
 public class BrokerServiceDrainerTest {
@@ -288,8 +290,55 @@ public class BrokerServiceDrainerTest {
 
    }
 
-   private void populateBroker(BrokerService broker) throws Exception {
 
+   @org.junit.Test
+   public void testDrainIgnoresExpired() throws Exception {
+      File dataDir = folder.newFolder("data-dir");
+
+      final BrokerService brokerToDrain = new BrokerService();
+      brokerToDrain.setUseJmx(false);
+      brokerToDrain.setAdvisorySupport(false);
+      brokerToDrain.setBrokerName("source");
+
+      brokerToDrain.setDataDirectoryFile(dataDir);
+
+      File kahaDataDir = new File(dataDir, "kahadb");
+      final PersistenceAdapter adaptor = new KahaDBPersistenceAdapter();
+      adaptor.setDirectory(kahaDataDir);
+      brokerToDrain.setPersistenceAdapter(adaptor);
+
+      brokerToDrain.start();
+      populateBroker(brokerToDrain, 2000);
+      populateBroker(brokerToDrain, 0);
+
+      assertEquals("all messages enqueued", 40,
+                   ((RegionBroker)brokerToDrain.getRegionBroker()).getDestinationStatistics().getEnqueues().getCount());
+
+      assertEquals("all messages present", 40,
+                   ((RegionBroker)brokerToDrain.getRegionBroker()).getDestinationStatistics().getMessages().getCount());
+
+      brokerToDrain.stop();
+      brokerToDrain.waitUntilStopped();
+
+      // allow expiry
+      TimeUnit.SECONDS.sleep(2);
+      log.info("do drain..");
+
+      System.setProperty(AMQ_DRAINER_DLQ_PROCESS_EXPIRED, "false");
+      BrokerServiceDrainer.main(new String[]{dataDir.getAbsolutePath(), "kahadb"});
+
+      assertEquals("all non expired messages forwarded to mesh", 20,
+                   ((RegionBroker)meshBroker.getRegionBroker()).getDestinationStatistics().getEnqueues().getCount());
+
+   }
+
+   private void populateBroker(BrokerService broker) throws Exception {
+      populateBroker(broker, 0l);
+   }
+
+   static int idRoot = 0;
+   private void populateBroker(BrokerService broker, long expiry) throws Exception {
+      idRoot++;
       ProducerBrokerExchange exchange = new ProducerBrokerExchange();
       exchange.setConnectionContext(broker.getAdminConnectionContext());
       ProducerInfo producerInfo = new ProducerInfo();
@@ -300,7 +349,10 @@ public class BrokerServiceDrainerTest {
       activeMQTextMessage.setDestination(new ActiveMQQueue("ONE.A,TWO.A"));
       for (int i=0; i<10; i++) {
          Message copy = activeMQTextMessage.copy();
-         copy.setMessageId(new MessageId("1:2:3:4:" + i));
+         if (expiry > 0) {
+            copy.setExpiration(System.currentTimeMillis() + expiry);
+         }
+         copy.setMessageId(new MessageId(idRoot + ":2:3:4:" + i));
          broker.getBroker().send(exchange, copy);
       }
    }
