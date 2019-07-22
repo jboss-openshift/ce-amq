@@ -32,7 +32,7 @@
 
     <groupId>org.jboss.ce</groupId>
     <artifactId>ce-amq-parent</artifactId>
-    <version>1.0.2.Final</version>
+    <version>1.0.3.Final</version>
     <packaging>pom</packaging>
 
     <name>CE AMQ - Parent</name>
