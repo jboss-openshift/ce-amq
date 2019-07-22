@@ -51,7 +51,7 @@ public class BrokerServiceDrainer {
 
     private static final String ACTIVEMQ_DATA = "activemq.data" ;
 
-    private static final String MESH_URL_FORMAT = "kube://%s:61616/?queryInterval=%s";
+    private static final String MESH_URL_FORMAT = "%s://%s:61616/?queryInterval=%s";
 
     public static final String AMQ_DRAINER_DLQ_PROCESS_EXPIRED = "amq.drainer.dlq.process.expired";
 
@@ -102,7 +102,8 @@ public class BrokerServiceDrainer {
             meshServiceName = getApplicationName() + "-amq-tcp";
         }
         String queryInterval = Utils.getSystemPropertyOrEnvVar("amq.mesh.query.interval", "3");
-        String meshURL = String.format(MESH_URL_FORMAT, meshServiceName, queryInterval);
+        String drainerDiscoveryType = Utils.getSystemPropertyOrEnvVar("amq.mesh.discovery.type", "kube");
+        String meshURL = String.format(MESH_URL_FORMAT, drainerDiscoveryType, meshServiceName, queryInterval);
 
         // programmatically add the draining bridge, depends on the mesh url only (could be in the xml config either)
         log.info("Creating network connector.");
